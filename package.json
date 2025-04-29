@@ -1,0 +1,33 @@
+{
+  "name": "roplat-gui",
+  "version": "1.0.0",
+  "description": "GUI of roplat",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start-gui": "cd gui && npm start",
+    "build": "cd gui && npm run build && cd .. && electron-builder --win --x64"
+  },
+  "author": "Fuyuki",
+  "license": "MIT",
+  "build": {
+    "extends": null,
+    "appId": "com.example.roplat-gui",
+    "copyright": "JZ Yan",
+    "productName": "roplat-gui",
+    "directories": {
+      "output": "dist"
+    },
+    "win": {
+      "icon": "./anon.ico",
+      "target": [
+        "portable"
+      ]
+    }
+  },
+  "devDependencies": {
+    "electron": "^36.0.0",
+    "electron-builder": "^24.6.3"
+  }
+}
