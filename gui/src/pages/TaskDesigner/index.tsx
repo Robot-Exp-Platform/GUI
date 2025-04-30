@@ -1,43 +1,56 @@
-import { FC } from "react";
+import { FC, useState } from "react";
 import { Button, Header, Icon } from "semantic-ui-react";
+import { DndProvider } from "react-dnd";
+import { HTML5Backend } from "react-dnd-html5-backend";
+import TaskSidebar from "./TaskSidebar";
+import TaskMainTop from "./TaskMainTop";
+import TaskMainBottom from "./TaskMainBottom";
+import DraggableDivider from "./DraggableDivider";
+import "./styles.css";
 
 interface TaskDesignerProps {
   onBack: () => void;
 }
 
 export const Page: FC<TaskDesignerProps> = ({ onBack }) => {
+  const [topHeight, setTopHeight] = useState(200);
+
+  const handleDividerDrag = (deltaY: number) => {
+    console.log("Dragging divider", deltaY);
+    setTopHeight((prev) => Math.max(100, prev + deltaY));
+  };
+
   return (
-    <div
-      style={{
-        display: "flex",
-        flexDirection: "column",
-        justifyContent: "center",
-        alignItems: "center",
-        height: "100vh",
-      }}
-    >
+    <div className="task-designer-page">
       <Button
         icon
         labelPosition="left"
         onClick={onBack}
-        style={{
-          position: "absolute",
-          top: "1rem",
-          left: "1rem",
-        }}
+        className="task-designer-back-btn"
       >
         <Icon name="arrow left" />
         返回
       </Button>
-      <Header as="h1" content="任务设计器" textAlign="center" />
-      <div
-        style={{
-          display: "flex",
-          justifyContent: "center",
-          marginTop: "10%",
-          width: "100%",
-        }}
-      ></div>
+      <Header
+        as="h1"
+        content="任务设计器"
+        textAlign="center"
+        className="task-designer-header"
+      />
+      <DndProvider backend={HTML5Backend}>
+        <div className="task-designer-main">
+          <TaskSidebar />
+          <div className="task-designer-main-content">
+            <div style={{ height: `${topHeight}px`, overflow: "auto" }}>
+              <TaskMainTop />
+            </div>
+            <DraggableDivider onDrag={handleDividerDrag} />
+            <div style={{ flex: 1, overflow: "auto" }}>
+              <TaskMainBottom />
+            </div>
+          </div>
+        </div>
+      </DndProvider>
     </div>
   );
 };

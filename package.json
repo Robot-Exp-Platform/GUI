@@ -9,8 +9,8 @@
   "scripts": {
     "start": "electron .",
     "test": "echo \"Error: no test specified\" && exit 1",
-    "start-gui": "cd gui && npm start",
-    "build": "cd gui && npm run build && cd .. && electron-builder --win --x64"
+    "start-gui": "cd gui && pnpm start",
+    "build": "cd gui && pnpm run build && cd .. && electron-builder --win --x64"
   },
   "author": "Fuyuki",
   "license": "MIT",

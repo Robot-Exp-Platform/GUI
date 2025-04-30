@@ -24,7 +24,7 @@ const App = () => {
 
   return (
     <React.StrictMode>
-      <Container>{renderPage()}</Container>
+      <Container style={{minWidth: "100vw"}}>{renderPage()}</Container>
     </React.StrictMode>
   );
 };
