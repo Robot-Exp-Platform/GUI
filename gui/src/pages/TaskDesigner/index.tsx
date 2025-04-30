@@ -5,7 +5,8 @@ import { HTML5Backend } from "react-dnd-html5-backend";
 import TaskSidebar from "./TaskSidebar";
 import TaskMainTop from "./TaskMainTop";
 import TaskMainBottom from "./TaskMainBottom";
-import DraggableDivider from "./DraggableDivider";
+
+import DraggableDivider from "~/components/DraggableDivider";
 import "./styles.css";
 
 interface TaskDesignerProps {

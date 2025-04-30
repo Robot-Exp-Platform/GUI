@@ -1,7 +1,6 @@
 import { FC } from "react";
 import { Divider } from "semantic-ui-react";
 import { useDrag } from "react-dnd";
-import "./styles.css";
 
 interface DraggableDividerProps {
   onDrag: (deltaY: number) => void;

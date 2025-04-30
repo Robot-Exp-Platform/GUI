@@ -72,3 +72,22 @@
   top: 1rem;
   left: 1rem;
 }
+
+.task-area-header {
+  padding: 0 0 10px 5px;
+  border-bottom: 1px solid #e0e0e0;
+  margin-bottom: 10px;
+}
+
+.task-area-header h3 {
+  margin: 0;
+  font-size: 16px;
+  color: #333;
+  font-weight: 500;
+}
+
+.task-main-bottom-container {
+  background-color: #F5F5F5;
+  border-radius: 4px;
+  box-shadow: inset 0 0 5px rgba(0,0,0,0.05);
+}
