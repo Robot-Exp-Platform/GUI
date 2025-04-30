@@ -1,4 +1,4 @@
-import React, { FC, useState, useRef, useContext } from "react";
+import React, { FC, useState, useRef, useContext, useEffect } from "react";
 import "./styles.css";
 import Task from "../../components/Task";
 import { DeleteZoneContext } from "./TaskSidebar";
@@ -16,8 +16,119 @@ const TaskMainBottom: FC = () => {
   // 添加网格显示状态
   const [showGrid, setShowGrid] = useState(false);
 
+  // 拖动状态
+  const dragState = useRef({
+    isDragging: false,
+    startPosition: { x: 0, y: 0 },
+    currentPosition: { x: 0, y: 0 },
+    tasksInitialPositions: new Map<string, { x: number; y: number }>(),
+  });
+
+  // 控制视觉反馈的临时偏移量
+  const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
+
   // 直接使用删除区域上下文，不使用 conv_ref
   const deleteZoneContext = useContext(DeleteZoneContext);
+
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container) return;
+
+    // 鼠标按下事件处理
+    const handleMouseDown = (e: MouseEvent) => {
+      // 确保只处理容器背景的点击，不处理子元素
+      if (
+        e.target === container ||
+        (e.target as HTMLElement).classList.contains(
+          "task-main-bottom-container"
+        )
+      ) {
+        // 保存所有任务的初始位置
+        const tasksPositions = new Map<string, { x: number; y: number }>();
+        tasks.forEach((task) => {
+          tasksPositions.set(task.id, { ...task.position });
+        });
+
+        // 设置拖动状态
+        dragState.current = {
+          isDragging: true,
+          startPosition: { x: e.clientX, y: e.clientY },
+          currentPosition: { x: e.clientX, y: e.clientY },
+          tasksInitialPositions: tasksPositions,
+        };
+
+        // 显示网格并更改鼠标样式
+        setShowGrid(true);
+        container.style.cursor = "grabbing";
+      }
+    };
+
+    // 鼠标移动事件处理
+    const handleMouseMove = (e: MouseEvent) => {
+      if (!dragState.current.isDragging) return;
+
+      // 计算总移动距离
+      const deltaX = e.clientX - dragState.current.startPosition.x;
+      const deltaY = e.clientY - dragState.current.startPosition.y;
+
+      // 更新当前位置
+      dragState.current.currentPosition = { x: e.clientX, y: e.clientY };
+
+      // 设置视觉偏移量，用于更新视图（去掉负号使方向一致）
+      setDragOffset({ x: deltaX, y: deltaY });
+    };
+
+    // 鼠标抬起事件处理
+    const handleMouseUp = (e: MouseEvent) => {
+      if (!dragState.current.isDragging) return;
+
+      // 计算总移动距离
+      const deltaX = e.clientX - dragState.current.startPosition.x;
+      const deltaY = e.clientY - dragState.current.startPosition.y;
+
+      // 确保拖动距离足够才处理
+      if (Math.abs(deltaX) >= 1 || Math.abs(deltaY) >= 1) {
+        // 对照初始位置，更新所有任务的最终位置并对齐到网格
+        setTasks((prevTasks) =>
+          prevTasks.map((task) => {
+            const initialPos = dragState.current.tasksInitialPositions.get(
+              task.id
+            );
+            if (!initialPos) return task;
+
+            // 计算新位置并与网格对齐
+            const newX = Math.round((initialPos.x + deltaX) / 20) * 20;
+            const newY = Math.round((initialPos.y + deltaY) / 20) * 20;
+
+            return {
+              ...task,
+              position: { x: newX, y: newY },
+            };
+          })
+        );
+      }
+
+      // 重置拖动状态和偏移量
+      dragState.current.isDragging = false;
+      setDragOffset({ x: 0, y: 0 });
+
+      // 隐藏网格并重置鼠标样式
+      setShowGrid(false);
+      container.style.cursor = "grab";
+    };
+
+    // 添加事件监听器
+    container.addEventListener("mousedown", handleMouseDown);
+    window.addEventListener("mousemove", handleMouseMove);
+    window.addEventListener("mouseup", handleMouseUp);
+
+    // 清理函数
+    return () => {
+      container.removeEventListener("mousedown", handleMouseDown);
+      window.removeEventListener("mousemove", handleMouseMove);
+      window.removeEventListener("mouseup", handleMouseUp);
+    };
+  }, [tasks]);
 
   const handleDoubleClick = (e: React.MouseEvent<HTMLDivElement>) => {
     // 计算点击位置相对于容器的坐标
@@ -26,7 +137,7 @@ const TaskMainBottom: FC = () => {
     const x = e.clientX - rect.left;
     const y = e.clientY - rect.top;
 
-    // 如果点击的是容器而不是任务 - 使用classList.contains代替精确匹配className
+    // 如果点击的是容器而不是任务
     if (
       (e.target as HTMLElement).classList.contains("task-main-bottom-container")
     ) {
@@ -109,6 +220,8 @@ const TaskMainBottom: FC = () => {
           width: "100%",
           height: "100%",
           minHeight: "300px",
+          overflow: "hidden",
+          cursor: "grab",
         }}
       >
         {tasks.map((task) => (
@@ -129,6 +242,7 @@ const TaskMainBottom: FC = () => {
             onResizeStart={handleDragOrResizeStart}
             onResizeEnd={handleDragOrResizeEnd}
             gridSize={20}
+            dragOffset={dragOffset}
           />
         ))}
       </div>

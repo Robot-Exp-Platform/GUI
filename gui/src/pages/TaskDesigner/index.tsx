@@ -46,7 +46,7 @@ export const Page: FC<TaskDesignerProps> = ({ onBack }) => {
               <TaskMainTop />
             </div>
             <DraggableDivider onDrag={handleDividerDrag} />
-            <div style={{ flex: 1, overflow: "auto" }}>
+            <div style={{ flex: 1, overflow: "visible" }}>
               <TaskMainBottom />
             </div>
           </div>

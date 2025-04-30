@@ -20,6 +20,8 @@ interface TaskProps {
   onDragEnd?: () => void;
   onResizeStart?: () => void;
   onResizeEnd?: () => void;
+  // 添加拖动偏移量，用于容器拖动时的临时位置调整
+  dragOffset?: { x: number; y: number };
 }
 
 const Task: React.FC<TaskProps> = ({
@@ -39,6 +41,7 @@ const Task: React.FC<TaskProps> = ({
   onDragEnd,
   onResizeStart,
   onResizeEnd,
+  dragOffset,
 }) => {
   // 确保初始位置和大小与网格对齐
   const alignToGrid = (value: number) =>
@@ -64,28 +67,6 @@ const Task: React.FC<TaskProps> = ({
 
   // 用于检测重叠的状态
   const [isOverlapping, setIsOverlapping] = useState(false);
-
-  // 确保位置在容器范围内并与网格对齐
-  const ensureWithinBounds = (newPosition: {
-    x: number;
-    y: number;
-  }): { x: number; y: number } => {
-    if (!containerRef?.current || !taskRef.current) return newPosition;
-
-    const containerRect = containerRef.current.getBoundingClientRect();
-    const taskRect = taskRef.current.getBoundingClientRect();
-    const padding = 8; // 考虑边框和内边距
-
-    // 计算容器内可用空间
-    const maxX = containerRect.width - taskRect.width - padding;
-    const maxY = containerRect.height - taskRect.height - padding;
-
-    // 限制位置在容器内并与网格对齐
-    const alignedX = alignToGrid(Math.max(0, Math.min(newPosition.x, maxX)));
-    const alignedY = alignToGrid(Math.max(0, Math.min(newPosition.y, maxY)));
-
-    return { x: alignedX, y: alignedY };
-  };
 
   // 检查任务和删除区域的重叠状态
   const checkOverlap = (taskRect: DOMRect, deleteRect: DOMRect) => {
@@ -133,17 +114,13 @@ const Task: React.FC<TaskProps> = ({
       const delta = monitor.getDifferenceFromInitialOffset();
 
       if (delta) {
-        // 不满足删除条件时，正常更新位置
-        const uncheckedPosition = {
-          x: position.x + delta.x,
-          y: position.y + delta.y,
-        };
+        // 计算新位置并与网格对齐（改为加法，使方向一致）
+        const newX = alignToGrid(position.x + delta.x);
+        const newY = alignToGrid(position.y + delta.y);
+        const newPosition = { x: newX, y: newY };
 
-        // 确保位置在容器范围内并与网格对齐
-        const boundedPosition = ensureWithinBounds(uncheckedPosition);
-
-        setPosition(boundedPosition);
-        onPositionChange?.(id, boundedPosition);
+        setPosition(newPosition);
+        onPositionChange?.(id, newPosition);
       }
     },
   });
@@ -184,21 +161,11 @@ const Task: React.FC<TaskProps> = ({
     const newWidth = alignToGrid(newUnadjustedWidth);
     const newHeight = alignToGrid(newUnadjustedHeight);
 
-    // 确保调整大小不会超出容器边界
-    if (containerRef?.current && taskRef.current) {
-      const containerRect = containerRef.current.getBoundingClientRect();
-      const taskRect = taskRef.current.getBoundingClientRect();
+    // 设置大小，不再检查容器边界
+    setSize({ width: newWidth, height: newHeight });
 
-      const maxWidth = containerRect.width - position.x - 16; // 16px for padding and border
-      const maxHeight = containerRect.height - position.y - 16;
-
-      const constrainedWidth = alignToGrid(Math.min(newWidth, maxWidth));
-      const constrainedHeight = alignToGrid(Math.min(newHeight, maxHeight));
-
-      setSize({ width: constrainedWidth, height: constrainedHeight });
-    } else {
-      setSize({ width: newWidth, height: newHeight });
-    }
+    // 通知大小变化
+    onSizeChange?.(id, { width: newWidth, height: newHeight });
   };
 
   const handleResizeEndEvent = () => {
@@ -237,6 +204,14 @@ const Task: React.FC<TaskProps> = ({
   };
 
   useEffect(() => {
+    // 当 initialPosition 属性变化时更新内部位置状态
+    setPosition({
+      x: alignToGrid(initialPosition.x),
+      y: alignToGrid(initialPosition.y),
+    });
+  }, [initialPosition, gridSize]);
+
+  useEffect(() => {
     if (isEditing && inputRef.current) {
       inputRef.current.focus();
     }
@@ -248,15 +223,6 @@ const Task: React.FC<TaskProps> = ({
       document.removeEventListener("mouseup", handleResizeEndEvent);
     };
   }, []);
-
-  // 当组件挂载或更新时检查位置是否在边界内
-  useEffect(() => {
-    const boundedPosition = ensureWithinBounds(position);
-    if (boundedPosition.x !== position.x || boundedPosition.y !== position.y) {
-      setPosition(boundedPosition);
-      onPositionChange?.(id, boundedPosition);
-    }
-  }, [containerRef]);
 
   useEffect(() => {
     // 如果当前正在拖拽且删除区域引用存在
@@ -282,8 +248,8 @@ const Task: React.FC<TaskProps> = ({
       }}
       style={{
         position: "absolute",
-        left: position.x,
-        top: position.y,
+        left: position.x + (dragOffset?.x || 0),
+        top: position.y + (dragOffset?.y || 0),
         width: size.width,
         height: size.height,
         backgroundColor: "#E6F5FF",
