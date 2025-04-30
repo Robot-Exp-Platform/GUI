@@ -16,12 +16,9 @@ export const DeleteZoneContext = createContext<{
 });
 
 const TaskSidebar: FC = () => {
-  // 用于跟踪鼠标是否与删除区域有足够重叠
   const [isHovering, setIsHovering] = useState(false);
-  // 删除区域的引用
   const deleteZoneRef = useRef<HTMLDivElement>(null);
 
-  // 使用 react-dnd 的 useDrop 钩子监听拖拽
   const [{ isOver }, drop] = useDrop({
     accept: "TASK",
     collect: (monitor) => ({
@@ -30,18 +27,15 @@ const TaskSidebar: FC = () => {
     hover: (item: any, monitor) => {
       if (!deleteZoneRef.current) return;
 
-      // 获取删除区域的边界信息
       const deleteZoneRect = deleteZoneRef.current.getBoundingClientRect();
       const clientOffset = monitor.getClientOffset();
 
       if (clientOffset) {
-        // 计算鼠标中心点与删除区域中心的距离
         const deleteZoneCenterX =
           (deleteZoneRect.left + deleteZoneRect.right) / 2;
         const deleteZoneCenterY =
           (deleteZoneRect.top + deleteZoneRect.bottom) / 2;
 
-        // 计算重叠面积
         const overlapX =
           Math.min(clientOffset.x + 15, deleteZoneRect.right) -
           Math.max(clientOffset.x - 15, deleteZoneRect.left);
@@ -49,12 +43,10 @@ const TaskSidebar: FC = () => {
           Math.min(clientOffset.y + 15, deleteZoneRect.bottom) -
           Math.max(clientOffset.y - 15, deleteZoneRect.top);
 
-        // 如果横纵重叠都大于等于15px，则设置悬停状态为true
         setIsHovering(overlapX >= 15 && overlapY >= 15);
       }
     },
     drop: (item: any) => {
-      // 如果当前有足够重叠，返回一个删除标记
       if (isHovering) {
         return { deleted: true };
       }
@@ -72,8 +64,6 @@ const TaskSidebar: FC = () => {
     >
       <div className="task-sidebar">
         {/* 左侧区域内容 */}
-
-        {/* 删除区域 - 放在底部 */}
         <div
           ref={(el) => {
             drop(el);
@@ -82,7 +72,7 @@ const TaskSidebar: FC = () => {
           className="task-delete-zone"
           style={{
             marginTop: "auto",
-            backgroundColor: isOver && isHovering ? "#ff6b6b" : "#ffdddd", // 当悬停时变亮
+            backgroundColor: isOver && isHovering ? "#ff6b6b" : "#ffdddd",
             padding: "15px",
             borderRadius: "8px",
             display: "flex",

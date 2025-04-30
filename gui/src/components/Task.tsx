@@ -13,6 +13,13 @@ interface TaskProps {
   containerRef?: React.RefObject<HTMLDivElement>;
   deleteZoneRef?: React.RefObject<HTMLDivElement> | null;
   deleteZoneIsHovering?: boolean;
+  // 添加网格大小属性
+  gridSize?: number;
+  // 添加拖拽和调整大小的开始/结束事件回调
+  onDragStart?: () => void;
+  onDragEnd?: () => void;
+  onResizeStart?: () => void;
+  onResizeEnd?: () => void;
 }
 
 const Task: React.FC<TaskProps> = ({
@@ -27,9 +34,26 @@ const Task: React.FC<TaskProps> = ({
   containerRef,
   deleteZoneRef,
   deleteZoneIsHovering,
+  gridSize = 20, // 默认网格大小为20px
+  onDragStart,
+  onDragEnd,
+  onResizeStart,
+  onResizeEnd,
 }) => {
-  const [position, setPosition] = useState(initialPosition);
-  const [size, setSize] = useState(initialSize);
+  // 确保初始位置和大小与网格对齐
+  const alignToGrid = (value: number) =>
+    Math.round(value / gridSize) * gridSize;
+  const alignedInitialPosition = {
+    x: alignToGrid(initialPosition.x),
+    y: alignToGrid(initialPosition.y),
+  };
+  const alignedInitialSize = {
+    width: alignToGrid(initialSize.width),
+    height: alignToGrid(initialSize.height),
+  };
+
+  const [position, setPosition] = useState(alignedInitialPosition);
+  const [size, setSize] = useState(alignedInitialSize);
   const [isResizing, setIsResizing] = useState(false);
   const [name, setName] = useState(initialName);
   const [isEditing, setIsEditing] = useState(false);
@@ -37,37 +61,42 @@ const Task: React.FC<TaskProps> = ({
   const resizeStartPos = useRef({ x: 0, y: 0 });
   const initialSize_ = useRef({ width: 0, height: 0 });
   const taskRef = useRef<HTMLDivElement>(null);
-  
+
   // 用于检测重叠的状态
   const [isOverlapping, setIsOverlapping] = useState(false);
 
-  // 确保位置在容器范围内
-  const ensureWithinBounds = (newPosition: { x: number; y: number }): { x: number; y: number } => {
+  // 确保位置在容器范围内并与网格对齐
+  const ensureWithinBounds = (newPosition: {
+    x: number;
+    y: number;
+  }): { x: number; y: number } => {
     if (!containerRef?.current || !taskRef.current) return newPosition;
-    
+
     const containerRect = containerRef.current.getBoundingClientRect();
     const taskRect = taskRef.current.getBoundingClientRect();
     const padding = 8; // 考虑边框和内边距
-    
+
     // 计算容器内可用空间
     const maxX = containerRect.width - taskRect.width - padding;
     const maxY = containerRect.height - taskRect.height - padding;
-    
-    // 限制位置在容器内
-    return {
-      x: Math.max(0, Math.min(newPosition.x, maxX)),
-      y: Math.max(0, Math.min(newPosition.y, maxY)),
-    };
+
+    // 限制位置在容器内并与网格对齐
+    const alignedX = alignToGrid(Math.max(0, Math.min(newPosition.x, maxX)));
+    const alignedY = alignToGrid(Math.max(0, Math.min(newPosition.y, maxY)));
+
+    return { x: alignedX, y: alignedY };
   };
 
   // 检查任务和删除区域的重叠状态
   const checkOverlap = (taskRect: DOMRect, deleteRect: DOMRect) => {
     // 计算重叠区域
-    const overlapX = Math.min(taskRect.right, deleteRect.right) - 
-                     Math.max(taskRect.left, deleteRect.left);
-    const overlapY = Math.min(taskRect.bottom, deleteRect.bottom) - 
-                     Math.max(taskRect.top, deleteRect.top);
-    
+    const overlapX =
+      Math.min(taskRect.right, deleteRect.right) -
+      Math.max(taskRect.left, deleteRect.left);
+    const overlapY =
+      Math.min(taskRect.bottom, deleteRect.bottom) -
+      Math.max(taskRect.top, deleteRect.top);
+
     // 如果横向和纵向重叠都大于等于15px，则认为重叠足够
     return overlapX >= 15 && overlapY >= 15;
   };
@@ -75,37 +104,44 @@ const Task: React.FC<TaskProps> = ({
   // 拖拽功能
   const [{ isDragging }, drag] = useDrag({
     type: "TASK",
-    item: () => ({
-      id,
-      position,
-      type: "TASK",
-      rect: taskRef.current?.getBoundingClientRect()
-    }),
+    item: () => {
+      // 触发拖拽开始回调
+      onDragStart?.();
+      return {
+        id,
+        position,
+        type: "TASK",
+        rect: taskRef.current?.getBoundingClientRect(),
+      };
+    },
     collect: (monitor) => ({
       isDragging: !!monitor.isDragging(),
     }),
     end: (item, monitor) => {
+      // 触发拖拽结束回调
+      onDragEnd?.();
+
       const dropResult = monitor.getDropResult<{ deleted?: boolean }>();
-      
+
       // 检查是否被删除
       if (dropResult && dropResult.deleted) {
         // 调用删除回调
         onDelete?.(id);
         return;
       }
-      
+
       const delta = monitor.getDifferenceFromInitialOffset();
-      
+
       if (delta) {
         // 不满足删除条件时，正常更新位置
         const uncheckedPosition = {
           x: position.x + delta.x,
           y: position.y + delta.y,
         };
-        
-        // 确保位置在容器范围内
+
+        // 确保位置在容器范围内并与网格对齐
         const boundedPosition = ensureWithinBounds(uncheckedPosition);
-        
+
         setPosition(boundedPosition);
         onPositionChange?.(id, boundedPosition);
       }
@@ -116,50 +152,69 @@ const Task: React.FC<TaskProps> = ({
   const handleResizeStart = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
+
+    // 设置调整大小状态和初始值
     setIsResizing(true);
     resizeStartPos.current = { x: e.clientX, y: e.clientY };
     initialSize_.current = { ...size };
 
-    // 添加全局事件监听
-    document.addEventListener("mousemove", handleResizeMove);
-    document.addEventListener("mouseup", handleResizeEnd);
+    // 触发调整大小开始回调
+    onResizeStart?.();
+
+    // 添加全局事件监听器 - 使用内联函数确保访问到最新状态
+    document.addEventListener("mousemove", handleResizeMoveEvent);
+    document.addEventListener("mouseup", handleResizeEndEvent);
   };
 
-  const handleResizeMove = (e: MouseEvent) => {
-    if (!isResizing) return;
-
+  // 将事件处理函数分离出来，以避免闭包问题
+  const handleResizeMoveEvent = (e: MouseEvent) => {
+    // 这里不检查 isResizing 状态，因为我们只在开始调整大小时添加这个监听器
     const deltaWidth = e.clientX - resizeStartPos.current.x;
     const deltaHeight = e.clientY - resizeStartPos.current.y;
 
-    const newWidth = Math.max(60, initialSize_.current.width + deltaWidth);
-    const newHeight = Math.max(40, initialSize_.current.height + deltaHeight);
+    // 计算新的宽度和高度，并调整为网格的倍数
+    const newUnadjustedWidth = Math.max(
+      60,
+      initialSize_.current.width + deltaWidth
+    );
+    const newUnadjustedHeight = Math.max(
+      40,
+      initialSize_.current.height + deltaHeight
+    );
+    const newWidth = alignToGrid(newUnadjustedWidth);
+    const newHeight = alignToGrid(newUnadjustedHeight);
 
     // 确保调整大小不会超出容器边界
     if (containerRef?.current && taskRef.current) {
       const containerRect = containerRef.current.getBoundingClientRect();
       const taskRect = taskRef.current.getBoundingClientRect();
-      
+
       const maxWidth = containerRect.width - position.x - 16; // 16px for padding and border
       const maxHeight = containerRect.height - position.y - 16;
-      
-      const constrainedWidth = Math.min(newWidth, maxWidth);
-      const constrainedHeight = Math.min(newHeight, maxHeight);
-      
+
+      const constrainedWidth = alignToGrid(Math.min(newWidth, maxWidth));
+      const constrainedHeight = alignToGrid(Math.min(newHeight, maxHeight));
+
       setSize({ width: constrainedWidth, height: constrainedHeight });
     } else {
       setSize({ width: newWidth, height: newHeight });
     }
   };
 
-  const handleResizeEnd = () => {
-    if (!isResizing) return;
+  const handleResizeEndEvent = () => {
     setIsResizing(false);
 
-    document.removeEventListener("mousemove", handleResizeMove);
-    document.removeEventListener("mouseup", handleResizeEnd);
+    // 移除事件监听器
+    document.removeEventListener("mousemove", handleResizeMoveEvent);
+    document.removeEventListener("mouseup", handleResizeEndEvent);
 
-    onSizeChange?.(id, size);
+    // 触发调整大小结束回调
+    onResizeEnd?.();
   };
+
+  // 保留原来的函数用于兼容性，但实际不再使用
+  const handleResizeMove = handleResizeMoveEvent;
+  const handleResizeEnd = handleResizeEndEvent;
 
   const handleDoubleClick = () => {
     setIsEditing(true);
@@ -189,8 +244,8 @@ const Task: React.FC<TaskProps> = ({
 
   useEffect(() => {
     return () => {
-      document.removeEventListener("mousemove", handleResizeMove);
-      document.removeEventListener("mouseup", handleResizeEnd);
+      document.removeEventListener("mousemove", handleResizeMoveEvent);
+      document.removeEventListener("mouseup", handleResizeEndEvent);
     };
   }, []);
 
@@ -209,7 +264,7 @@ const Task: React.FC<TaskProps> = ({
       // 获取删除区域和任务的矩形边界
       const deleteRect = deleteZoneRef.current.getBoundingClientRect();
       const taskRect = taskRef.current.getBoundingClientRect();
-      
+
       // 检查重叠状态
       const isOverlap = checkOverlap(taskRect, deleteRect);
       setIsOverlapping(isOverlap);
@@ -284,16 +339,21 @@ const Task: React.FC<TaskProps> = ({
             height: 16,
             cursor: "nwse-resize",
             background: "transparent",
+            zIndex: 10, // 增加z-index确保在最上层
+            touchAction: "none", // 禁用默认触摸行为
           }}
-          onMouseDown={handleResizeStart}
+          onMouseDown={(e) => {
+            e.stopPropagation(); // 确保事件不会传播
+            handleResizeStart(e);
+          }}
         >
           <div
             style={{
               position: "absolute",
               bottom: 6,
               right: 6,
-              width: 6,
-              height: 6,
+              width: 8, // 增大手柄点的尺寸
+              height: 8, // 增大手柄点的尺寸
               backgroundColor: "#6ECD4B",
               borderRadius: "50%",
             }}

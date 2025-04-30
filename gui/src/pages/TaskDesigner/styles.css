@@ -90,4 +90,31 @@
   background-color: #F5F5F5;
   border-radius: 4px;
   box-shadow: inset 0 0 5px rgba(0,0,0,0.05);
+  position: relative;
+}
+
+/* 添加网格样式 */
+.task-main-bottom-container.show-grid {
+  background-image: 
+    linear-gradient(to right, rgba(150,150,150,0.1) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(150,150,150,0.1) 1px, transparent 1px);
+  background-size: 20px 20px;
+  background-position: 0 0;
+}
+
+/* 加深每5格的网格线，以便更好地对齐 */
+.task-main-bottom-container.show-grid::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  pointer-events: none;
+  background-image: 
+    linear-gradient(to right, rgba(100,100,100,0.15) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(100,100,100,0.15) 1px, transparent 1px);
+  background-size: 100px 100px; /* 5 * 20px */
+  background-position: 0 0;
+  z-index: 1;
 }

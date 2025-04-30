@@ -24,7 +24,7 @@ jobs:
           cache: pnpm
 
       - name: Install dependencies
-        run: cd gui && pnpm install && cd .. && pnpm install
+        run: cd gui && pnpm install --no-frozen-lockfile && cd .. && pnpm install --no-frozen-lockfile
 
       - name: Build
         run: cd gui && pnpm build && cd .. && pnpm electron-builder --win --x64
