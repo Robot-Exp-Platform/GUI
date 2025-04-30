@@ -9,7 +9,10 @@ interface TaskProps {
   onPositionChange?: (id: string, position: { x: number; y: number }) => void;
   onSizeChange?: (id: string, size: { width: number; height: number }) => void;
   onNameChange?: (id: string, name: string) => void;
-  containerRef?: React.RefObject<HTMLDivElement>; // 添加父容器引用
+  onDelete?: (id: string) => void;
+  containerRef?: React.RefObject<HTMLDivElement>;
+  deleteZoneRef?: React.RefObject<HTMLDivElement> | null;
+  deleteZoneIsHovering?: boolean;
 }
 
 const Task: React.FC<TaskProps> = ({
@@ -20,7 +23,10 @@ const Task: React.FC<TaskProps> = ({
   onPositionChange,
   onSizeChange,
   onNameChange,
+  onDelete,
   containerRef,
+  deleteZoneRef,
+  deleteZoneIsHovering,
 }) => {
   const [position, setPosition] = useState(initialPosition);
   const [size, setSize] = useState(initialSize);
@@ -31,6 +37,9 @@ const Task: React.FC<TaskProps> = ({
   const resizeStartPos = useRef({ x: 0, y: 0 });
   const initialSize_ = useRef({ width: 0, height: 0 });
   const taskRef = useRef<HTMLDivElement>(null);
+  
+  // 用于检测重叠的状态
+  const [isOverlapping, setIsOverlapping] = useState(false);
 
   // 确保位置在容器范围内
   const ensureWithinBounds = (newPosition: { x: number; y: number }): { x: number; y: number } => {
@@ -51,22 +60,44 @@ const Task: React.FC<TaskProps> = ({
     };
   };
 
+  // 检查任务和删除区域的重叠状态
+  const checkOverlap = (taskRect: DOMRect, deleteRect: DOMRect) => {
+    // 计算重叠区域
+    const overlapX = Math.min(taskRect.right, deleteRect.right) - 
+                     Math.max(taskRect.left, deleteRect.left);
+    const overlapY = Math.min(taskRect.bottom, deleteRect.bottom) - 
+                     Math.max(taskRect.top, deleteRect.top);
+    
+    // 如果横向和纵向重叠都大于等于15px，则认为重叠足够
+    return overlapX >= 15 && overlapY >= 15;
+  };
+
   // 拖拽功能
   const [{ isDragging }, drag] = useDrag({
     type: "TASK",
     item: () => ({
       id,
       position,
+      type: "TASK",
+      rect: taskRef.current?.getBoundingClientRect()
     }),
     collect: (monitor) => ({
       isDragging: !!monitor.isDragging(),
     }),
     end: (item, monitor) => {
-      const dropResult = monitor.getDropResult();
+      const dropResult = monitor.getDropResult<{ deleted?: boolean }>();
+      
+      // 检查是否被删除
+      if (dropResult && dropResult.deleted) {
+        // 调用删除回调
+        onDelete?.(id);
+        return;
+      }
+      
       const delta = monitor.getDifferenceFromInitialOffset();
-
+      
       if (delta) {
-        // 计算新位置
+        // 不满足删除条件时，正常更新位置
         const uncheckedPosition = {
           x: position.x + delta.x,
           y: position.y + delta.y,
@@ -171,6 +202,21 @@ const Task: React.FC<TaskProps> = ({
       onPositionChange?.(id, boundedPosition);
     }
   }, [containerRef]);
+
+  useEffect(() => {
+    // 如果当前正在拖拽且删除区域引用存在
+    if (isDragging && deleteZoneRef?.current && taskRef.current) {
+      // 获取删除区域和任务的矩形边界
+      const deleteRect = deleteZoneRef.current.getBoundingClientRect();
+      const taskRect = taskRef.current.getBoundingClientRect();
+      
+      // 检查重叠状态
+      const isOverlap = checkOverlap(taskRect, deleteRect);
+      setIsOverlapping(isOverlap);
+    } else {
+      setIsOverlapping(false);
+    }
+  }, [isDragging, deleteZoneRef, position]);
 
   return (
     <div
