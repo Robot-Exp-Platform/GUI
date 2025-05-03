@@ -31,6 +31,19 @@ interface ElectronAPI {
   openDirectory: (dirPath: string) => Promise<{
     success: boolean;
   }>;
+
+  // 新增：读取项目配置文件
+  readProjectConfig: (configPath: string) => Promise<{
+    success: boolean;
+    config?: any;
+    error?: string;
+  }>;
+
+  // 新增：写入项目配置文件
+  writeProjectConfig: (configPath: string, configData: any) => Promise<{
+    success: boolean;
+    error?: string;
+  }>;
 }
 
 interface Window {

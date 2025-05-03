@@ -1,4 +1,4 @@
-import React, { FC } from "react";
+import React, { FC, useCallback } from "react";
 import { useDrop } from "react-dnd";
 import { conv_ref } from "~/utils";
 import TaskConfigItem from "~/components/ConfigItem/TaskConfigItem";
@@ -20,12 +20,19 @@ const TaskConfigSection: FC<TaskConfigSectionProps> = ({
   onItemAdd,
   onItemDelete,
 }) => {
-  const [{ isOver, canDrop }, drop] = useDrop(() => ({
-    accept: type.toUpperCase(),
-    drop: (item: { type: "robot" | "sensor"; name: string }) => {
+  // 使用useCallback来确保drop处理函数的稳定性
+  const handleDrop = useCallback(
+    (item: { type: "robot" | "sensor"; name: string }) => {
+      console.log(`Dropped item of type ${item.type} with name ${item.name}`);
       onItemAdd(item.type, item.name);
       return { dropped: true };
     },
+    [onItemAdd]
+  );
+
+  const [{ isOver, canDrop }, drop] = useDrop(() => ({
+    accept: type.toUpperCase(),
+    drop: handleDrop,
     collect: (monitor) => ({
       isOver: !!monitor.isOver(),
       canDrop: !!monitor.canDrop(),
