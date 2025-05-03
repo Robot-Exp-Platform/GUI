@@ -5,6 +5,8 @@ import "./styles.css";
 import { conv_ref } from "~/utils";
 import TaskDraggableItem from "~/components/DraggableItem/TaskDraggableItem";
 import { DeleteZoneContext } from "~/components/contexts/DeleteZoneContext";
+import { RobotType } from "~/types/Robot";
+import { SensorType } from "~/types/Sensor";
 
 const TaskSidebar: FC = () => {
   const [isHovering, setIsHovering] = useState(false);
@@ -60,8 +62,8 @@ const TaskSidebar: FC = () => {
             Robot
           </Header>
           <div className="draggable-items-container">
-            <TaskDraggableItem type="robot" name="Panda" />
-            <TaskDraggableItem type="robot" name="UR" />
+            <TaskDraggableItem type="robot" name="Panda" specificType="panda" />
+            <TaskDraggableItem type="robot" name="UR" specificType="ur" />
           </div>
         </Segment>
 
@@ -71,8 +73,16 @@ const TaskSidebar: FC = () => {
             Sensors
           </Header>
           <div className="draggable-items-container">
-            <TaskDraggableItem type="sensor" name="Sensor A" />
-            <TaskDraggableItem type="sensor" name="Sensor B" />
+            <TaskDraggableItem
+              type="sensor"
+              name="Sensor A"
+              specificType="sensor_a"
+            />
+            <TaskDraggableItem
+              type="sensor"
+              name="Sensor B"
+              specificType="sensor_b"
+            />
           </div>
         </Segment>
 

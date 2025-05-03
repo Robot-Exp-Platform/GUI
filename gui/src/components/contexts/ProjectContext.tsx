@@ -4,26 +4,30 @@ import React, {
   useContext,
   ReactNode,
   useEffect,
+  useCallback,
 } from "react";
-
-interface ProjectConfig {
-  nextId?: number;
-  robots?: Array<{ id: number; name: string }>;
-  sensors?: Array<{ id: number; name: string }>;
-  [key: string]: any; // 允许添加其他配置
-}
-
-interface ProjectInfo {
-  projectPath: string;
-  projectName: string;
-  config?: ProjectConfig;
-}
+import { Project, ProjectConfig } from "~/types/Project";
+import { Robot } from "~/types/Robot";
+import { Sensor } from "~/types/Sensor";
+import { Task } from "~/types/Task";
 
 interface ProjectContextType {
-  projectInfo: ProjectInfo | null;
-  setProjectInfo: (info: ProjectInfo | null) => void;
-  updateProjectConfig: (configUpdate: Partial<ProjectConfig>) => void;
-  saveProjectConfig: () => Promise<void>;
+  project: Project | null;
+  setProject: (project: Project | null) => void;
+  loadProject: (projectPath: string, projectName: string) => Promise<boolean>;
+  saveProject: () => Promise<boolean>;
+  updateProject: () => void;
+  // 项目操作API
+  addRobot: (robot: Robot) => Promise<void>;
+  removeRobot: (id: number) => Promise<void>;
+  addSensor: (sensor: Sensor) => Promise<void>;
+  removeSensor: (id: number) => Promise<void>;
+  addTask: (task: Task) => Promise<void>;
+  removeTask: (id: number) => Promise<void>;
+  getNextId: () => number;
+  getNextTypeCounter: (
+    type: "panda" | "ur" | "sensor_a" | "sensor_b" | "task"
+  ) => number;
 }
 
 const ProjectContext = createContext<ProjectContextType | undefined>(undefined);
@@ -31,84 +35,145 @@ const ProjectContext = createContext<ProjectContextType | undefined>(undefined);
 export const ProjectProvider: React.FC<{ children: ReactNode }> = ({
   children,
 }) => {
-  const [projectInfo, setProjectInfo] = useState<ProjectInfo | null>(null);
+  const [project, setProject] = useState<Project | null>(null);
 
-  // 从配置文件加载配置
-  useEffect(() => {
-    if (projectInfo?.projectPath) {
-      loadProjectConfig();
-    }
-  }, [projectInfo?.projectPath]);
+  // 加载项目
+  const loadProject = useCallback(
+    async (projectPath: string, projectName: string): Promise<boolean> => {
+      try {
+        const loadedProject = await Project.load(projectPath);
 
-  // 加载项目配置
-  const loadProjectConfig = async () => {
-    if (!projectInfo?.projectPath) return;
-
-    try {
-      const configPath = `${projectInfo.projectPath}/.roplat`;
-      const result = await window.electronAPI.readProjectConfig(configPath);
-
-      if (result.success && result.config) {
-        setProjectInfo((prev) => ({
-          ...prev!,
-          config: result.config,
-        }));
+        if (loadedProject) {
+          setProject(loadedProject);
+          return true;
+        } else {
+          // 如果无法加载，创建一个新的项目
+          const newProject = new Project(projectName, projectPath);
+          setProject(newProject);
+          return await newProject.save();
+        }
+      } catch (error) {
+        console.error("加载项目失败:", error);
+        return false;
       }
-    } catch (error) {
-      console.error("加载项目配置失败:", error);
-    }
-  };
+    },
+    []
+  );
 
-  // 更新项目配置（内存中）
-  const updateProjectConfig = (configUpdate: Partial<ProjectConfig>) => {
-    if (!projectInfo) return;
+  // 保存项目
+  const saveProject = useCallback(async (): Promise<boolean> => {
+    if (!project) return false;
 
-    setProjectInfo((prev) => {
+    return await project.save();
+  }, [project]);
+
+  // 更新组件状态以触发重新渲染
+  const updateProject = useCallback(() => {
+    setProject((prev) => {
       if (!prev) return null;
 
-      const updatedConfig = {
-        ...(prev.config || {}),
-        ...configUpdate,
-      };
-
-      return {
-        ...prev,
-        config: updatedConfig,
-      };
+      // 创建一个新的 Project 实例，保留原来的所有属性
+      return new Project(prev.projectName, prev.projectPath, {
+        robots: [...prev.config.robots],
+        sensors: [...prev.config.sensors],
+        tasks: [...prev.config.tasks],
+        idCounters: { ...prev.config.idCounters },
+      });
     });
-  };
+  }, []);
 
-  // 保存项目配置到文件
-  const saveProjectConfig = async () => {
-    if (!projectInfo?.projectPath || !projectInfo?.config) return;
+  // 项目操作API - 所有方法现在都是异步的
+  const addRobot = useCallback(
+    async (robot: Robot) => {
+      if (!project) return;
 
-    try {
-      const configPath = `${projectInfo.projectPath}/.roplat`;
-      const configData = {
-        projectName: projectInfo.projectName,
-        ...projectInfo.config,
-      };
+      await project.addRobot(robot);
+      updateProject();
+    },
+    [project, updateProject]
+  );
 
-      await window.electronAPI.writeProjectConfig(configPath, configData);
-    } catch (error) {
-      console.error("保存项目配置失败:", error);
-    }
-  };
+  const removeRobot = useCallback(
+    async (id: number) => {
+      if (!project) return;
 
-  // 配置更改后自动保存
-  useEffect(() => {
-    if (projectInfo?.config) {
-      saveProjectConfig();
-    }
-  }, [projectInfo?.config]);
+      await project.removeRobot(id);
+      updateProject();
+    },
+    [project, updateProject]
+  );
+
+  const addSensor = useCallback(
+    async (sensor: Sensor) => {
+      if (!project) return;
+
+      await project.addSensor(sensor);
+      updateProject();
+    },
+    [project, updateProject]
+  );
+
+  const removeSensor = useCallback(
+    async (id: number) => {
+      if (!project) return;
+
+      await project.removeSensor(id);
+      updateProject();
+    },
+    [project, updateProject]
+  );
+
+  const addTask = useCallback(
+    async (task: Task) => {
+      if (!project) return;
+
+      await project.addTask(task);
+      updateProject();
+    },
+    [project, updateProject]
+  );
+
+  const removeTask = useCallback(
+    async (id: number) => {
+      if (!project) return;
+
+      await project.removeTask(id);
+      updateProject();
+    },
+    [project, updateProject]
+  );
+
+  const getNextId = useCallback((): number => {
+    if (!project) return -1;
+
+    return project.getNextId();
+  }, [project]);
+
+  const getNextTypeCounter = useCallback(
+    (type: "panda" | "ur" | "sensor_a" | "sensor_b" | "task"): number => {
+      if (!project) return -1;
+
+      return project.getNextTypeCounter(type);
+    },
+    [project]
+  );
 
   return (
     <ProjectContext.Provider
       value={{
-        projectInfo,
-        setProjectInfo,
-        updateProjectConfig,
-        saveProjectConfig,
+        project,
+        setProject,
+        loadProject,
+        saveProject,
+        updateProject,
+        addRobot,
+        removeRobot,
+        addSensor,
+        removeSensor,
+        addTask,
+        removeTask,
+        getNextId,
+        getNextTypeCounter,
       }}
     >
       {children}

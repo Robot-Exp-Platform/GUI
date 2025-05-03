@@ -1,142 +1,150 @@
-import React, { FC, useState, useEffect, useRef, useCallback } from "react";
+import React, { FC, useState, useEffect, useCallback } from "react";
 import "./styles.css";
 import { ConfigContext } from "~/components/contexts/ConfigContext";
 import TaskConfigSection from "~/components/ConfigSection/TaskConfigSection";
 import { useProject } from "~/components/contexts/ProjectContext";
+import {
+  Robot,
+  Sensor,
+  createPandaRobot,
+  createURRobot,
+  createSensorA,
+  createSensorB,
+} from "~/types";
 
 const ConfigArea: FC = () => {
-  const { projectInfo, updateProjectConfig } = useProject();
+  const {
+    project,
+    addRobot,
+    removeRobot,
+    addSensor,
+    removeSensor,
+    getNextId,
+    getNextTypeCounter,
+    updateProject,
+  } = useProject();
 
-  // 使用ref来存储nextId，避免闭包问题
-  const nextIdRef = useRef(1);
-
-  // 状态中也保留一个nextId用于重新渲染
+  // 初始状态
+  const [robots, setRobots] = useState<Robot[]>([]);
+  const [sensors, setSensors] = useState<Sensor[]>([]);
   const [nextId, setNextId] = useState(1);
+  // 添加一个加载状态，防止多次拖拽导致的并发问题
+  const [isAdding, setIsAdding] = useState(false);
 
-  // 初始化ID
+  // 从项目中加载数据
   useEffect(() => {
-    if (projectInfo?.config?.nextId) {
-      nextIdRef.current = projectInfo.config.nextId;
-      setNextId(projectInfo.config.nextId);
+    if (project) {
+      console.log("Updating local state from project:", project.config);
+      setRobots(project.config.robots || []);
+      setSensors(project.config.sensors || []);
+      setNextId(project.config.idCounters.nextId);
     }
-  }, [projectInfo?.config?.nextId]);
+  }, [project]);
 
+  // 用于ConfigContext的incrementId函数
   const incrementId = useCallback(() => {
-    const currentId = nextIdRef.current;
-    nextIdRef.current += 1;
+    if (!project) return -1;
+    return getNextId(); // 使用项目管理器中的getNextId方法
+  }, [project, getNextId]);
 
-    // 更新状态和配置
-    setNextId(nextIdRef.current);
-    if (projectInfo) {
-      updateProjectConfig({ nextId: nextIdRef.current });
-    }
-
-    console.log(
-      `Generating ID: ${currentId}, Next ID will be: ${nextIdRef.current}`
-    );
-    return currentId;
-  }, [projectInfo, updateProjectConfig]);
-
-  // 机器人和传感器状态
-  const [robots, setRobots] = useState<Array<{ id: number; name: string }>>([]);
-  const [sensors, setSensors] = useState<Array<{ id: number; name: string }>>(
-    []
-  );
-
-  // 从项目配置中加载数据
-  useEffect(() => {
-    if (projectInfo?.config) {
-      if (
-        projectInfo.config.robots &&
-        Array.isArray(projectInfo.config.robots)
-      ) {
-        setRobots(projectInfo.config.robots);
-
-        // 确保nextId大于所有已有ID
-        if (projectInfo.config.robots.length > 0) {
-          const maxRobotId = Math.max(
-            ...projectInfo.config.robots.map((r) => r.id)
-          );
-          if (maxRobotId >= nextIdRef.current) {
-            nextIdRef.current = maxRobotId + 1;
-            setNextId(nextIdRef.current);
-            updateProjectConfig({ nextId: nextIdRef.current });
-          }
-        }
-      }
-
-      if (
-        projectInfo.config.sensors &&
-        Array.isArray(projectInfo.config.sensors)
-      ) {
-        setSensors(projectInfo.config.sensors);
-
-        // 确保nextId大于所有已有ID
-        if (projectInfo.config.sensors.length > 0) {
-          const maxSensorId = Math.max(
-            ...projectInfo.config.sensors.map((s) => s.id)
-          );
-          if (maxSensorId >= nextIdRef.current) {
-            nextIdRef.current = maxSensorId + 1;
-            setNextId(nextIdRef.current);
-            updateProjectConfig({ nextId: nextIdRef.current });
-          }
-        }
-      }
-    }
-  }, [projectInfo?.config, updateProjectConfig]);
-
-  // 添加机器人或传感器 - 使用useCallback确保函数引用稳定
+  // 添加机器人或传感器 - 处理从侧边栏拖放的项目
   const handleAddItem = useCallback(
-    (type: "robot" | "sensor", name: string) => {
-      const id = incrementId();
-      console.log(`Adding ${type} with id: ${id}, name: ${name}`);
+    async (type: "robot" | "sensor", name: string) => {
+      if (!project || isAdding) return;
 
-      if (type === "robot") {
-        setRobots((prev) => {
-          const newRobots = [...prev, { id, name }];
-          // 更新配置
-          updateProjectConfig({ robots: newRobots });
-          return newRobots;
+      try {
+        setIsAdding(true); // 开始添加，阻止重复操作
+
+        const id = getNextId();
+        console.log(`Adding ${type} with id: ${id}, name: ${name}`);
+
+        if (type === "robot") {
+          // 根据名称确定机器人类型
+          let robot: Robot;
+          if (name.toLowerCase().includes("panda")) {
+            const pandaCounter = getNextTypeCounter("panda");
+            robot = createPandaRobot(id);
+            robot.name = `panda_${pandaCounter}`;
+          } else if (name.toLowerCase().includes("ur")) {
+            const urCounter = getNextTypeCounter("ur");
+            robot = createURRobot(id);
+            robot.name = `ur_${urCounter}`;
+          } else {
+            // 默认为panda
+            const pandaCounter = getNextTypeCounter("panda");
+            robot = createPandaRobot(id);
+            robot.name = `panda_${pandaCounter}`;
+          }
+
+          await addRobot(robot);
+          setRobots((prev) => [...prev, robot]);
+        } else {
+          // 根据名称确定传感器类型
+          let sensor: Sensor;
+          if (name.toLowerCase().includes("a")) {
+            const sensorCounter = getNextTypeCounter("sensor_a");
+            sensor = createSensorA(id);
+            sensor.name = `sensor_a_${sensorCounter}`;
+          } else {
+            const sensorCounter = getNextTypeCounter("sensor_b");
+            sensor = createSensorB(id);
+            sensor.name = `sensor_b_${sensorCounter}`;
+          }
+
+          await addSensor(sensor);
+          setSensors((prev) => [...prev, sensor]);
+        }
+
+        // 更新nextId显示
+        setNextId((prev) => prev + 1);
+        console.log("Item added successfully, current state:", {
+          robots: type === "robot" ? [...robots, { id, name }] : robots,
+          sensors: type === "sensor" ? [...sensors, { id, name }] : sensors,
         });
-      } else {
-        setSensors((prev) => {
-          const newSensors = [...prev, { id, name }];
-          // 更新配置
-          updateProjectConfig({ sensors: newSensors });
-          return newSensors;
-        });
+      } catch (error) {
+        console.error("添加项目失败:", error);
+      } finally {
+        setIsAdding(false); // 完成添加，允许下一次操作
       }
     },
-    [incrementId, updateProjectConfig]
+    [
+      project,
+      getNextId,
+      getNextTypeCounter,
+      addRobot,
+      addSensor,
+      isAdding,
+      robots,
+      sensors,
+    ]
   );
 
-  // 删除机器人或传感器 - 使用useCallback确保函数引用稳定
+  // 删除机器人或传感器
   const handleDeleteItem = useCallback(
-    (id: number, type: "robot" | "sensor") => {
-      console.log(`Deleting ${type} with id: ${id}`);
+    async (id: number, type: "robot" | "sensor") => {
+      if (!project) return;
 
-      if (type === "robot") {
-        setRobots((prev) => {
-          const newRobots = prev.filter((robot) => robot.id !== id);
-          updateProjectConfig({ robots: newRobots });
-          return newRobots;
-        });
-      } else {
-        setSensors((prev) => {
-          const newSensors = prev.filter((sensor) => sensor.id !== id);
-          updateProjectConfig({ sensors: newSensors });
-          return newSensors;
-        });
+      try {
+        console.log(`Deleting ${type} with id: ${id}`);
+
+        if (type === "robot") {
+          await removeRobot(id);
+          setRobots((prev) => prev.filter((robot) => robot.id !== id));
+        } else {
+          await removeSensor(id);
+          setSensors((prev) => prev.filter((sensor) => sensor.id !== id));
+        }
+      } catch (error) {
+        console.error("删除项目失败:", error);
       }
     },
-    [updateProjectConfig]
+    [project, removeRobot, removeSensor]
   );
 
   // 调试用：显示当前状态
   useEffect(() => {
-    console.log("Current robots:", robots);
-    console.log("Current sensors:", sensors);
+    console.log("Local state - robots:", robots);
+    console.log("Local state - sensors:", sensors);
   }, [robots, sensors]);
 
   return (

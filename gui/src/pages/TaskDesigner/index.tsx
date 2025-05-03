@@ -15,7 +15,7 @@ interface TaskDesignerProps {
 }
 
 export const Page: FC<TaskDesignerProps> = ({ onBack }) => {
-  const { projectInfo } = useProject();
+  const { project } = useProject();
   const [topHeight, setTopHeight] = useState(250); // 将初始高度从200px修改为250px
 
   const handleDividerDrag = (deltaY: number) => {
@@ -41,7 +41,7 @@ export const Page: FC<TaskDesignerProps> = ({ onBack }) => {
       </Button>
       <Header
         as="h1"
-        content={projectInfo?.projectName || "任务设计器"}
+        content={project?.projectName || "任务设计器"}
         textAlign="center"
         className="task-designer-header"
       />

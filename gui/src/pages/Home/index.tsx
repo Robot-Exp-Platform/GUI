@@ -7,16 +7,17 @@ import {
   Message,
   Segment,
   Divider,
-  Tab
+  Tab,
 } from "semantic-ui-react";
 import { useProject } from "~/components/contexts/ProjectContext";
+import { Project } from "~/types";
 
 interface HomeProps {
   onNavigate: (page: string) => void;
 }
 
 export const Page: FC<HomeProps> = ({ onNavigate }) => {
-  const { setProjectInfo } = useProject();
+  const { loadProject } = useProject();
   const [showProjectModal, setShowProjectModal] = useState(false);
   const [projectName, setProjectName] = useState("");
   const [parentDir, setParentDir] = useState("");
@@ -30,17 +31,22 @@ export const Page: FC<HomeProps> = ({ onNavigate }) => {
   const handleOpenProject = async () => {
     setLoading(true);
     setError(null);
-    
+
     try {
       const result = await window.electronAPI.selectProjectDirectory();
-      
+
       if (result.success && result.projectPath && result.projectName) {
-        setProjectInfo({
-          projectPath: result.projectPath,
-          projectName: result.projectName
-        });
-        setShowProjectModal(false);
-        onNavigate("TaskDesigner");
+        const success = await loadProject(
+          result.projectPath,
+          result.projectName
+        );
+
+        if (success) {
+          setShowProjectModal(false);
+          onNavigate("TaskDesigner");
+        } else {
+          setError("加载项目失败");
+        }
       } else if (result.error) {
         setError(result.error);
       }
@@ -50,21 +56,26 @@ export const Page: FC<HomeProps> = ({ onNavigate }) => {
       setLoading(false);
     }
   };
-  
+
   const handleOpenProjectFile = async () => {
     setLoading(true);
     setError(null);
-    
+
     try {
       const result = await window.electronAPI.selectProjectFile();
-      
+
       if (result.success && result.projectPath && result.projectName) {
-        setProjectInfo({
-          projectPath: result.projectPath,
-          projectName: result.projectName
-        });
-        setShowProjectModal(false);
-        onNavigate("TaskDesigner");
+        const success = await loadProject(
+          result.projectPath,
+          result.projectName
+        );
+
+        if (success) {
+          setShowProjectModal(false);
+          onNavigate("TaskDesigner");
+        } else {
+          setError("加载项目失败");
+        }
       } else if (result.error) {
         setError(result.error);
       }
@@ -74,11 +85,11 @@ export const Page: FC<HomeProps> = ({ onNavigate }) => {
       setLoading(false);
     }
   };
-  
+
   const handleSelectParentDir = async () => {
     try {
       const result = await window.electronAPI.selectParentDirectory();
-      
+
       if (result.success && result.directoryPath) {
         setParentDir(result.directoryPath);
       }
@@ -86,34 +97,39 @@ export const Page: FC<HomeProps> = ({ onNavigate }) => {
       console.error("选择目录失败", err);
     }
   };
-  
+
   const handleCreateProject = async () => {
     if (!projectName.trim()) {
       setError("请输入项目名称");
       return;
     }
-    
+
     if (!parentDir) {
       setError("请选择父目录");
       return;
     }
-    
+
     setLoading(true);
     setError(null);
-    
+
     try {
       const result = await window.electronAPI.createProject({
         projectPath: parentDir,
-        projectName: projectName.trim()
+        projectName: projectName.trim(),
       });
-      
+
       if (result.success && result.projectPath && result.projectName) {
-        setProjectInfo({
-          projectPath: result.projectPath,
-          projectName: result.projectName
-        });
-        setShowProjectModal(false);
-        onNavigate("TaskDesigner");
+        const success = await loadProject(
+          result.projectPath,
+          result.projectName
+        );
+
+        if (success) {
+          setShowProjectModal(false);
+          onNavigate("TaskDesigner");
+        } else {
+          setError("加载项目失败");
+        }
       } else if (result.error) {
         setError(result.error);
       }
@@ -123,25 +139,20 @@ export const Page: FC<HomeProps> = ({ onNavigate }) => {
       setLoading(false);
     }
   };
-  
+
   const projectManagementTabs = [
     {
-      menuItem: '打开已有项目',
+      menuItem: "打开已有项目",
       render: () => (
         <Tab.Pane>
           <Segment>
-            <Button 
-              primary 
-              fluid 
-              onClick={handleOpenProject}
-              loading={loading}
-            >
+            <Button primary fluid onClick={handleOpenProject} loading={loading}>
               选择项目文件夹
             </Button>
             <Divider horizontal>或</Divider>
-            <Button 
-              primary 
-              fluid 
+            <Button
+              primary
+              fluid
               onClick={handleOpenProjectFile}
               loading={loading}
             >
@@ -152,7 +163,7 @@ export const Page: FC<HomeProps> = ({ onNavigate }) => {
       ),
     },
     {
-      menuItem: '创建新项目',
+      menuItem: "创建新项目",
       render: () => (
         <Tab.Pane>
           <Form>
@@ -179,8 +190,8 @@ export const Page: FC<HomeProps> = ({ onNavigate }) => {
                 width={3}
               />
             </Form.Group>
-            <Button 
-              primary 
+            <Button
+              primary
               fluid
               onClick={handleCreateProject}
               loading={loading}
@@ -224,7 +235,7 @@ export const Page: FC<HomeProps> = ({ onNavigate }) => {
           界面设计器
         </Button>
       </div>
-      
+
       <Modal
         open={showProjectModal}
         onClose={() => setShowProjectModal(false)}
@@ -238,7 +249,7 @@ export const Page: FC<HomeProps> = ({ onNavigate }) => {
               <p>{error}</p>
             </Message>
           )}
-          
+
           <Tab panes={projectManagementTabs} />
         </Modal.Content>
       </Modal>

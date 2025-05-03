@@ -1,5 +1,6 @@
 import React, { FC } from "react";
 import { Label, Icon, Popup } from "semantic-ui-react";
+import { Robot, Sensor } from "~/types";
 
 // 配置项组件接口
 interface TaskConfigItemProps {
@@ -7,6 +8,8 @@ interface TaskConfigItemProps {
   type: "robot" | "sensor";
   name: string;
   onDelete: (id: number) => void;
+  robotType?: string;
+  sensorType?: string;
 }
 
 // 可配置项组件
@@ -15,9 +18,31 @@ const TaskConfigItem: FC<TaskConfigItemProps> = ({
   type,
   name,
   onDelete,
+  robotType,
+  sensorType,
 }) => {
   const handleContextMenu = (e: React.MouseEvent) => {
     e.preventDefault(); // 防止默认右键菜单显示
+  };
+
+  // 确定图标
+  const getIcon = () => {
+    if (type === "robot") {
+      return robotType === "panda" ? "hand rock" : "android";
+    } else {
+      return sensorType === "sensor_a" ? "wifi" : "rss";
+    }
+  };
+
+  // 弹出信息内容
+  const getPopupContent = () => {
+    const basicInfo = `ID: ${id}`;
+
+    if (type === "robot") {
+      return `${basicInfo}\n类型: ${robotType || "未知"}`;
+    } else {
+      return `${basicInfo}\n类型: ${sensorType || "未知"}`;
+    }
   };
 
   return (
@@ -28,7 +53,7 @@ const TaskConfigItem: FC<TaskConfigItemProps> = ({
           style={{ cursor: "context-menu" }}
           onContextMenu={handleContextMenu}
         >
-          <Icon name={type === "robot" ? "android" : "wifi"} />
+          <Icon name={getIcon()} />
           {name}
           <Icon
             name="delete"
@@ -37,7 +62,7 @@ const TaskConfigItem: FC<TaskConfigItemProps> = ({
           />
         </Label>
       }
-      content={`ID: ${id}`}
+      content={getPopupContent()}
       on="click"
       position="bottom center"
     />
