@@ -92,35 +92,12 @@ const TaskSidebar: FC = () => {
             drop(el);
             deleteZoneRef.current = el;
           }}
-          className="task-delete-zone"
-          style={{
-            marginTop: "auto",
-            backgroundColor: isOver && isHovering ? "#ff6b6b" : "#ffdddd",
-            padding: "15px",
-            borderRadius: "8px",
-            display: "flex",
-            justifyContent: "center",
-            alignItems: "center",
-            cursor: "default",
-            transition: "all 0.2s ease",
-          }}
+          className={`task-delete-zone ${
+            isOver && isHovering ? "hovering" : ""
+          }`}
         >
-          <Icon
-            name="trash"
-            size="large"
-            style={{
-              color: isOver && isHovering ? "#ffffff" : "#ff6b6b",
-              transition: "all 0.2s ease",
-            }}
-          />
-          <div
-            style={{
-              marginLeft: "10px",
-              color: isOver && isHovering ? "#ffffff" : "#ff6b6b",
-            }}
-          >
-            拖放此处删除
-          </div>
+          <Icon name="trash" size="large" />
+          <div className="task-delete-zone-text">拖放此处删除</div>
         </div>
       </div>
     </DeleteZoneContext.Provider>

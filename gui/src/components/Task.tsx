@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from "react";
 import { useDrag } from "react-dnd";
+import "./styles.css";
 
 interface TaskProps {
   id: string;
@@ -100,12 +101,12 @@ const Task: React.FC<TaskProps> = ({
       if (isDraggingAnchor) {
         return false;
       }
-      
+
       // 检查是否为刚刚创建的任务，如果是则允许拖拽
       if ((window as any).__newTaskCreated === id) {
         return true;
       }
-      
+
       return true;
     },
     collect: (monitor) => ({
@@ -188,10 +189,10 @@ const Task: React.FC<TaskProps> = ({
   const handleAnchorMouseDown = (e: React.MouseEvent) => {
     e.stopPropagation();
     e.preventDefault();
-    
+
     // 设置组件内部状态
     setIsDraggingAnchor(true);
-    
+
     // 同时更新ref，确保后续事件处理中能访问到最新状态
     dragAnchorRef.current.isDragging = true;
     dragAnchorRef.current.fromId = id;
@@ -202,7 +203,7 @@ const Task: React.FC<TaskProps> = ({
     // 立即触发一次鼠标移动事件以初始化箭头位置
     if (onDependencyDrag) {
       onDependencyDrag(e.nativeEvent);
-      
+
       // 再次触发，确保位置已经更新
       requestAnimationFrame(() => {
         if (dragAnchorRef.current.isDragging && onDependencyDrag) {
@@ -212,8 +213,12 @@ const Task: React.FC<TaskProps> = ({
     }
 
     // 添加全局鼠标移动和抬起事件监听，使用捕获阶段确保优先处理
-    document.addEventListener("mousemove", handleAnchorMouseMove, { capture: true });
-    document.addEventListener("mouseup", handleAnchorMouseUp, { capture: true });
+    document.addEventListener("mousemove", handleAnchorMouseMove, {
+      capture: true,
+    });
+    document.addEventListener("mouseup", handleAnchorMouseUp, {
+      capture: true,
+    });
   };
 
   const handleAnchorMouseMove = (e: MouseEvent) => {
@@ -227,50 +232,55 @@ const Task: React.FC<TaskProps> = ({
     // 使用ref检查拖拽状态
     if (dragAnchorRef.current.isDragging) {
       // 1. 立即清除事件监听
-      document.removeEventListener("mousemove", handleAnchorMouseMove, { capture: true });
-      document.removeEventListener("mouseup", handleAnchorMouseUp, { capture: true });
-      
+      document.removeEventListener("mousemove", handleAnchorMouseMove, {
+        capture: true,
+      });
+      document.removeEventListener("mouseup", handleAnchorMouseUp, {
+        capture: true,
+      });
+
       // 2. 阻止事件冒泡，避免事件穿透到其他元素
       e.stopPropagation();
       e.preventDefault();
-      
+
       // 3. 标记此事件已被处理（仅用于调试和事件冲突检测）
       (e as any)._handledByAnchor = true;
-      
+
       // 4. 临时从 DOM 中移除当前锚点元素，以便能够检测到下面的元素
       const anchorElem = document.getElementById(`anchor-${id}`);
-      const anchorStyle = anchorElem ? anchorElem.style.display : '';
-      if (anchorElem) anchorElem.style.display = 'none';
-      
+      const anchorStyle = anchorElem ? anchorElem.style.display : "";
+      if (anchorElem) anchorElem.style.display = "none";
+
       // 5. 现在能够检测到锚点下方的元素
       const elemBelow = document.elementFromPoint(e.clientX, e.clientY);
-      
+
       // 6. 恢复锚点元素
       if (anchorElem) anchorElem.style.display = anchorStyle;
-      
+
       let targetTaskId: string | null = null;
-      
+
       if (elemBelow) {
         let targetElement: Element | null = elemBelow;
-        
+
         while (targetElement && !targetTaskId) {
           const dataTaskId = targetElement.getAttribute("data-task-id");
-          if (dataTaskId && dataTaskId !== id) { // 确保不是自身
+          if (dataTaskId && dataTaskId !== id) {
+            // 确保不是自身
             targetTaskId = dataTaskId;
             break;
           }
           targetElement = targetElement.parentElement;
         }
       }
-      
+
       // 7. 先保存状态，再重置
       const fromId = dragAnchorRef.current.fromId;
       const toId = targetTaskId;
-      
+
       // 8. 重置拖拽状态 - 重要：先重置ref，再更新React状态
       dragAnchorRef.current.isDragging = false;
       setIsDraggingAnchor(false);
-      
+
       // 9. 调用依赖结束处理函数
       if (onDependencyEnd) {
         // 使用Promise确保回调函数完成后再继续
@@ -321,23 +331,15 @@ const Task: React.FC<TaskProps> = ({
         if (node) taskRef.current = node;
       }}
       data-task-id={id}
+      className={`task ${isDragging ? "dragging" : ""}`}
       style={{
-        position: "absolute",
         left: position.x + (dragOffset?.x || 0),
         top: position.y + (dragOffset?.y || 0),
         width: size.width,
         height: size.height,
-        backgroundColor: "#E6F5FF",
-        border: "2px dashed #6ECD4B",
-        borderRadius: "4px",
-        padding: "8px",
-        cursor: isDragging ? "grabbing" : "grab",
-        opacity: isDragging ? 0.7 : 1,
-        userSelect: "none",
-        boxSizing: "border-box",
       }}
     >
-      <div style={{ position: "relative", height: "100%" }}>
+      <div className="task-content">
         {isEditing ? (
           <input
             ref={inputRef}
@@ -346,77 +348,27 @@ const Task: React.FC<TaskProps> = ({
             onChange={handleNameChange}
             onBlur={handleNameBlur}
             onKeyDown={handleKeyDown}
-            style={{
-              background: "transparent",
-              border: "1px solid #ddd",
-              padding: "2px",
-              fontSize: "12px",
-              width: "80%",
-            }}
+            className="task-name-input"
           />
         ) : (
-          <div
-            onDoubleClick={handleDoubleClick}
-            style={{
-              fontSize: "12px",
-              fontWeight: "bold",
-              marginBottom: "4px",
-              overflow: "hidden",
-              textOverflow: "ellipsis",
-              whiteSpace: "nowrap",
-            }}
-          >
+          <div onDoubleClick={handleDoubleClick} className="task-name">
             {name}
           </div>
         )}
 
         <div
-          style={{
-            position: "absolute",
-            bottom: -8,
-            right: -8,
-            width: 16,
-            height: 16,
-            cursor: "nwse-resize",
-            background: "transparent",
-            zIndex: 10,
-            touchAction: "none",
-          }}
+          className="task-resize-handle"
           onMouseDown={(e) => {
             e.stopPropagation();
             handleResizeStart(e);
           }}
         >
-          <div
-            style={{
-              position: "absolute",
-              bottom: 6,
-              right: 6,
-              width: 8,
-              height: 8,
-              backgroundColor: "#6ECD4B",
-              borderRadius: "50%",
-            }}
-          />
+          <div className="task-resize-indicator" />
         </div>
 
         <div
           id={`anchor-${id}`}
           className="task-anchor"
-          style={{
-            position: "absolute",
-            bottom: -10,
-            left: "50%",
-            transform: "translateX(-50%)",
-            width: 12,
-            height: 12,
-            backgroundColor: "#4a8af4",
-            borderRadius: "50%",
-            border: "2px solid white",
-            cursor: "pointer",
-            boxShadow: "0 2px 3px rgba(0, 0, 0, 0.3)",
-            zIndex: 20,
-          }}
           onMouseDown={handleAnchorMouseDown}
         />
       </div>

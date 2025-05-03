@@ -445,15 +445,7 @@ const TaskArea: FC = () => {
       <div className="task-area-header">
         <h3>任务区（定义任务、目标和节点）（双击新建任务）</h3>
         {circularDependencyWarning && (
-          <div
-            style={{
-              color: "red",
-              backgroundColor: "#FFEEEE",
-              padding: "5px",
-              borderRadius: "4px",
-              marginTop: "5px",
-            }}
-          >
+          <div className="circular-dependency-warning">
             {circularDependencyWarning}
           </div>
         )}
@@ -462,15 +454,6 @@ const TaskArea: FC = () => {
         ref={containerRef}
         className={`task-area-container ${showGrid ? "show-grid" : ""}`}
         onDoubleClick={handleDoubleClick}
-        style={{
-          position: "relative",
-          flex: 1,
-          width: "100%",
-          height: "100%",
-          minHeight: "300px",
-          overflow: "hidden",
-          cursor: "grab",
-        }}
       >
         {/* 箭头包装器，用于强制更新箭头位置 */}
         <div id="arrows-wrapper">
@@ -503,15 +486,10 @@ const TaskArea: FC = () => {
             containerRef.current && (
               <div
                 id="temp-arrow-end"
+                className="temp-arrow-end"
                 style={{
-                  position: "absolute",
                   left: mousePosition.x,
                   top: mousePosition.y,
-                  width: 1,
-                  height: 1,
-                  padding: 0,
-                  margin: 0,
-                  visibility: "hidden",
                 }}
               />
             )}
