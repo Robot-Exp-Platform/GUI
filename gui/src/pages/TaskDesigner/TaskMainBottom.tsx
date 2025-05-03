@@ -1,8 +1,8 @@
 import React, { FC, useState, useRef, useContext, useEffect } from "react";
 import "./styles.css";
 import Task from "../../components/Task";
-import { DeleteZoneContext } from "./TaskSidebar";
 import { conv_ref } from "~/utils";
+import DeleteZoneContext from "~/components/contexts/DeleteZoneContext";
 
 const TaskMainBottom: FC = () => {
   const [tasks, setTasks] = useState<
@@ -27,7 +27,6 @@ const TaskMainBottom: FC = () => {
   // 控制视觉反馈的临时偏移量
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
 
-  // 直接使用删除区域上下文，不使用 conv_ref
   const deleteZoneContext = useContext(DeleteZoneContext);
 
   useEffect(() => {
@@ -74,7 +73,7 @@ const TaskMainBottom: FC = () => {
       // 更新当前位置
       dragState.current.currentPosition = { x: e.clientX, y: e.clientY };
 
-      // 设置视觉偏移量，用于更新视图（去掉负号使方向一致）
+      // 设置视觉偏移量，用于更新视图
       setDragOffset({ x: deltaX, y: deltaY });
     };
 

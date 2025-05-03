@@ -14,11 +14,16 @@ interface TaskDesignerProps {
 }
 
 export const Page: FC<TaskDesignerProps> = ({ onBack }) => {
-  const [topHeight, setTopHeight] = useState(200);
+  const [topHeight, setTopHeight] = useState(250); // 将初始高度从200px修改为250px
 
   const handleDividerDrag = (deltaY: number) => {
     console.log("Dragging divider", deltaY);
-    setTopHeight((prev) => Math.max(100, prev + deltaY));
+    // 配置区最小高度为 250px
+    setTopHeight((prev) => {
+      const newHeight = prev + deltaY;
+      // 确保高度不低于 250px
+      return Math.max(250, newHeight);
+    });
   };
 
   return (

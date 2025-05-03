@@ -1,26 +1,17 @@
-import React, { FC, createContext, useState, useRef } from "react";
-import { Icon } from "semantic-ui-react";
+import React, { FC, useState, useRef } from "react";
+import { Icon, Header, Segment } from "semantic-ui-react";
 import { useDrop } from "react-dnd";
 import "./styles.css";
 import { conv_ref } from "~/utils";
-
-// 创建一个上下文来共享删除区域的引用和状态
-export const DeleteZoneContext = createContext<{
-  ref: React.RefObject<HTMLDivElement> | null;
-  isHovering: boolean;
-  setIsHovering: (isHovering: boolean) => void;
-}>({
-  ref: null,
-  isHovering: false,
-  setIsHovering: () => {},
-});
+import TaskDraggableItem from "~/components/DraggableItem/TaskDraggableItem";
+import { DeleteZoneContext } from "~/components/contexts/DeleteZoneContext";
 
 const TaskSidebar: FC = () => {
   const [isHovering, setIsHovering] = useState(false);
   const deleteZoneRef = useRef<HTMLDivElement>(null);
 
   const [{ isOver }, drop] = useDrop({
-    accept: "TASK",
+    accept: ["TASK", "ROBOT", "SENSOR"],
     collect: (monitor) => ({
       isOver: !!monitor.isOver(),
     }),
@@ -63,7 +54,29 @@ const TaskSidebar: FC = () => {
       }}
     >
       <div className="task-sidebar">
-        {/* 左侧区域内容 */}
+        {/* 机器人区域 */}
+        <Segment className="sidebar-section">
+          <Header as="h4" className="sidebar-header">
+            Robot
+          </Header>
+          <div className="draggable-items-container">
+            <TaskDraggableItem type="robot" name="Panda" />
+            <TaskDraggableItem type="robot" name="UR" />
+          </div>
+        </Segment>
+
+        {/* 传感器区域 */}
+        <Segment className="sidebar-section">
+          <Header as="h4" className="sidebar-header">
+            Sensors
+          </Header>
+          <div className="draggable-items-container">
+            <TaskDraggableItem type="sensor" name="Sensor A" />
+            <TaskDraggableItem type="sensor" name="Sensor B" />
+          </div>
+        </Segment>
+
+        {/* 删除区域 */}
         <div
           ref={(el) => {
             drop(el);
