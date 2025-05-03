@@ -28,6 +28,11 @@ interface ProjectContextType {
   getNextTypeCounter: (
     type: "panda" | "ur" | "sensor_a" | "sensor_b" | "task"
   ) => number;
+  // 任务依赖关系API
+  addTaskDependency: (fromTaskId: string, toTaskId: string) => Promise<void>;
+  removeTaskDependency: (fromTaskId: string, toTaskId: string) => Promise<void>;
+  getTaskDependencies: () => Array<[string, string]>;
+  hasCircularDependency: (fromTaskId: string, toTaskId: string) => boolean;
 }
 
 const ProjectContext = createContext<ProjectContextType | undefined>(undefined);
@@ -78,6 +83,7 @@ export const ProjectProvider: React.FC<{ children: ReactNode }> = ({
         sensors: [...prev.config.sensors],
         tasks: [...prev.config.tasks],
         idCounters: { ...prev.config.idCounters },
+        task_graph: [...prev.config.task_graph],
       });
     });
   }, []);
@@ -158,6 +164,42 @@ export const ProjectProvider: React.FC<{ children: ReactNode }> = ({
     [project]
   );
 
+  // 任务依赖关系API
+  const addTaskDependency = useCallback(
+    async (fromTaskId: string, toTaskId: string) => {
+      if (!project) return;
+
+      await project.addTaskDependency(fromTaskId, toTaskId);
+      updateProject();
+    },
+    [project, updateProject]
+  );
+
+  const removeTaskDependency = useCallback(
+    async (fromTaskId: string, toTaskId: string) => {
+      if (!project) return;
+
+      await project.removeTaskDependency(fromTaskId, toTaskId);
+      updateProject();
+    },
+    [project, updateProject]
+  );
+
+  const getTaskDependencies = useCallback((): Array<[string, string]> => {
+    if (!project) return [];
+
+    return project.getTaskDependencies();
+  }, [project]);
+
+  const hasCircularDependency = useCallback(
+    (fromTaskId: string, toTaskId: string): boolean => {
+      if (!project) return false;
+
+      return project.hasCircularDependency(fromTaskId, toTaskId);
+    },
+    [project]
+  );
+
   return (
     <ProjectContext.Provider
       value={{
@@ -174,6 +216,10 @@ export const ProjectProvider: React.FC<{ children: ReactNode }> = ({
         removeTask,
         getNextId,
         getNextTypeCounter,
+        addTaskDependency,
+        removeTaskDependency,
+        getTaskDependencies,
+        hasCircularDependency,
       }}
     >
       {children}

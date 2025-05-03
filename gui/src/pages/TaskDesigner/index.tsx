@@ -19,7 +19,6 @@ export const Page: FC<TaskDesignerProps> = ({ onBack }) => {
   const [topHeight, setTopHeight] = useState(250); // 将初始高度从200px修改为250px
 
   const handleDividerDrag = (deltaY: number) => {
-    console.log("Dragging divider", deltaY);
     // 配置区最小高度为 250px
     setTopHeight((prev) => {
       const newHeight = prev + deltaY;

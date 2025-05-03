@@ -34,7 +34,6 @@ const ConfigArea: FC = () => {
   // 从项目中加载数据
   useEffect(() => {
     if (project) {
-      console.log("Updating local state from project:", project.config);
       setRobots(project.config.robots || []);
       setSensors(project.config.sensors || []);
       setNextId(project.config.idCounters.nextId);
@@ -56,7 +55,6 @@ const ConfigArea: FC = () => {
         setIsAdding(true); // 开始添加，阻止重复操作
 
         const id = getNextId();
-        console.log(`Adding ${type} with id: ${id}, name: ${name}`);
 
         if (type === "robot") {
           // 根据名称确定机器人类型
@@ -97,10 +95,6 @@ const ConfigArea: FC = () => {
 
         // 更新nextId显示
         setNextId((prev) => prev + 1);
-        console.log("Item added successfully, current state:", {
-          robots: type === "robot" ? [...robots, { id, name }] : robots,
-          sensors: type === "sensor" ? [...sensors, { id, name }] : sensors,
-        });
       } catch (error) {
         console.error("添加项目失败:", error);
       } finally {
@@ -125,8 +119,6 @@ const ConfigArea: FC = () => {
       if (!project) return;
 
       try {
-        console.log(`Deleting ${type} with id: ${id}`);
-
         if (type === "robot") {
           await removeRobot(id);
           setRobots((prev) => prev.filter((robot) => robot.id !== id));
@@ -140,12 +132,6 @@ const ConfigArea: FC = () => {
     },
     [project, removeRobot, removeSensor]
   );
-
-  // 调试用：显示当前状态
-  useEffect(() => {
-    console.log("Local state - robots:", robots);
-    console.log("Local state - sensors:", sensors);
-  }, [robots, sensors]);
 
   return (
     <ConfigContext.Provider value={{ nextId, incrementId }}>

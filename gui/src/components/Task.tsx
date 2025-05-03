@@ -13,15 +13,15 @@ interface TaskProps {
   containerRef?: React.RefObject<HTMLDivElement>;
   deleteZoneRef?: React.RefObject<HTMLDivElement> | null;
   deleteZoneIsHovering?: boolean;
-  // 添加网格大小属性
   gridSize?: number;
-  // 添加拖拽和调整大小的开始/结束事件回调
   onDragStart?: () => void;
   onDragEnd?: () => void;
   onResizeStart?: () => void;
   onResizeEnd?: () => void;
-  // 添加拖动偏移量，用于容器拖动时的临时位置调整
   dragOffset?: { x: number; y: number };
+  onDependencyStart?: (taskId: string, anchorPoint: string) => void;
+  onDependencyDrag?: (e: MouseEvent) => void;
+  onDependencyEnd?: (targetTaskId: string | null) => void;
 }
 
 const Task: React.FC<TaskProps> = ({
@@ -42,8 +42,10 @@ const Task: React.FC<TaskProps> = ({
   onResizeStart,
   onResizeEnd,
   dragOffset,
+  onDependencyStart,
+  onDependencyDrag,
+  onDependencyEnd,
 }) => {
-  // 确保初始位置和大小与网格对齐
   const alignToGrid = (value: number) =>
     Math.round(value / gridSize) * gridSize;
   const alignedInitialPosition = {
@@ -64,29 +66,26 @@ const Task: React.FC<TaskProps> = ({
   const resizeStartPos = useRef({ x: 0, y: 0 });
   const initialSize_ = useRef({ width: 0, height: 0 });
   const taskRef = useRef<HTMLDivElement>(null);
-
-  // 用于检测重叠的状态
   const [isOverlapping, setIsOverlapping] = useState(false);
+  const [isDraggingAnchor, setIsDraggingAnchor] = useState(false);
+  const dragAnchorRef = useRef({
+    isDragging: false,
+    fromId: id,
+  });
 
-  // 检查任务和删除区域的重叠状态
   const checkOverlap = (taskRect: DOMRect, deleteRect: DOMRect) => {
-    // 计算重叠区域
     const overlapX =
       Math.min(taskRect.right, deleteRect.right) -
       Math.max(taskRect.left, deleteRect.left);
     const overlapY =
       Math.min(taskRect.bottom, deleteRect.bottom) -
       Math.max(taskRect.top, deleteRect.top);
-
-    // 如果横向和纵向重叠都大于等于15px，则认为重叠足够
     return overlapX >= 15 && overlapY >= 15;
   };
 
-  // 拖拽功能
   const [{ isDragging }, drag] = useDrag({
     type: "TASK",
     item: () => {
-      // 触发拖拽开始回调
       onDragStart?.();
       return {
         id,
@@ -95,61 +94,55 @@ const Task: React.FC<TaskProps> = ({
         rect: taskRef.current?.getBoundingClientRect(),
       };
     },
+    // 增加对新创建任务的特殊检查，确保不会同时进入锚点拖拽状态
+    canDrag: () => {
+      // 如果正在拖拽锚点，禁止拖拽任务
+      if (isDraggingAnchor) {
+        return false;
+      }
+      
+      // 检查是否为刚刚创建的任务，如果是则允许拖拽
+      if ((window as any).__newTaskCreated === id) {
+        return true;
+      }
+      
+      return true;
+    },
     collect: (monitor) => ({
       isDragging: !!monitor.isDragging(),
     }),
     end: (item, monitor) => {
-      // 触发拖拽结束回调
       onDragEnd?.();
-
       const dropResult = monitor.getDropResult<{ deleted?: boolean }>();
-
-      // 检查是否被删除
       if (dropResult && dropResult.deleted) {
-        // 调用删除回调
         onDelete?.(id);
         return;
       }
-
       const delta = monitor.getDifferenceFromInitialOffset();
-
       if (delta) {
-        // 计算新位置并与网格对齐（改为加法，使方向一致）
         const newX = alignToGrid(position.x + delta.x);
         const newY = alignToGrid(position.y + delta.y);
         const newPosition = { x: newX, y: newY };
-
         setPosition(newPosition);
         onPositionChange?.(id, newPosition);
       }
     },
   });
 
-  // 处理调整大小
   const handleResizeStart = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
-
-    // 设置调整大小状态和初始值
     setIsResizing(true);
     resizeStartPos.current = { x: e.clientX, y: e.clientY };
     initialSize_.current = { ...size };
-
-    // 触发调整大小开始回调
     onResizeStart?.();
-
-    // 添加全局事件监听器 - 使用内联函数确保访问到最新状态
     document.addEventListener("mousemove", handleResizeMoveEvent);
     document.addEventListener("mouseup", handleResizeEndEvent);
   };
 
-  // 将事件处理函数分离出来，以避免闭包问题
   const handleResizeMoveEvent = (e: MouseEvent) => {
-    // 这里不检查 isResizing 状态，因为我们只在开始调整大小时添加这个监听器
     const deltaWidth = e.clientX - resizeStartPos.current.x;
     const deltaHeight = e.clientY - resizeStartPos.current.y;
-
-    // 计算新的宽度和高度，并调整为网格的倍数
     const newUnadjustedWidth = Math.max(
       60,
       initialSize_.current.width + deltaWidth
@@ -160,28 +153,16 @@ const Task: React.FC<TaskProps> = ({
     );
     const newWidth = alignToGrid(newUnadjustedWidth);
     const newHeight = alignToGrid(newUnadjustedHeight);
-
-    // 设置大小，不再检查容器边界
     setSize({ width: newWidth, height: newHeight });
-
-    // 通知大小变化
     onSizeChange?.(id, { width: newWidth, height: newHeight });
   };
 
   const handleResizeEndEvent = () => {
     setIsResizing(false);
-
-    // 移除事件监听器
     document.removeEventListener("mousemove", handleResizeMoveEvent);
     document.removeEventListener("mouseup", handleResizeEndEvent);
-
-    // 触发调整大小结束回调
     onResizeEnd?.();
   };
-
-  // 保留原来的函数用于兼容性，但实际不再使用
-  const handleResizeMove = handleResizeMoveEvent;
-  const handleResizeEnd = handleResizeEndEvent;
 
   const handleDoubleClick = () => {
     setIsEditing(true);
@@ -203,8 +184,104 @@ const Task: React.FC<TaskProps> = ({
     }
   };
 
+  // 处理锚点鼠标按下事件
+  const handleAnchorMouseDown = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    e.preventDefault();
+    
+    // 设置组件内部状态
+    setIsDraggingAnchor(true);
+    
+    // 同时更新ref，确保后续事件处理中能访问到最新状态
+    dragAnchorRef.current.isDragging = true;
+    dragAnchorRef.current.fromId = id;
+
+    // 通知父组件开始创建依赖
+    onDependencyStart?.(id, "bottom");
+
+    // 立即触发一次鼠标移动事件以初始化箭头位置
+    if (onDependencyDrag) {
+      onDependencyDrag(e.nativeEvent);
+      
+      // 再次触发，确保位置已经更新
+      requestAnimationFrame(() => {
+        if (dragAnchorRef.current.isDragging && onDependencyDrag) {
+          onDependencyDrag(e.nativeEvent);
+        }
+      });
+    }
+
+    // 添加全局鼠标移动和抬起事件监听，使用捕获阶段确保优先处理
+    document.addEventListener("mousemove", handleAnchorMouseMove, { capture: true });
+    document.addEventListener("mouseup", handleAnchorMouseUp, { capture: true });
+  };
+
+  const handleAnchorMouseMove = (e: MouseEvent) => {
+    // 使用ref检查拖拽状态，确保总能访问到最新状态
+    if (dragAnchorRef.current.isDragging) {
+      onDependencyDrag?.(e);
+    }
+  };
+
+  const handleAnchorMouseUp = (e: MouseEvent) => {
+    // 使用ref检查拖拽状态
+    if (dragAnchorRef.current.isDragging) {
+      // 1. 立即清除事件监听
+      document.removeEventListener("mousemove", handleAnchorMouseMove, { capture: true });
+      document.removeEventListener("mouseup", handleAnchorMouseUp, { capture: true });
+      
+      // 2. 阻止事件冒泡，避免事件穿透到其他元素
+      e.stopPropagation();
+      e.preventDefault();
+      
+      // 3. 标记此事件已被处理（仅用于调试和事件冲突检测）
+      (e as any)._handledByAnchor = true;
+      
+      // 4. 临时从 DOM 中移除当前锚点元素，以便能够检测到下面的元素
+      const anchorElem = document.getElementById(`anchor-${id}`);
+      const anchorStyle = anchorElem ? anchorElem.style.display : '';
+      if (anchorElem) anchorElem.style.display = 'none';
+      
+      // 5. 现在能够检测到锚点下方的元素
+      const elemBelow = document.elementFromPoint(e.clientX, e.clientY);
+      
+      // 6. 恢复锚点元素
+      if (anchorElem) anchorElem.style.display = anchorStyle;
+      
+      let targetTaskId: string | null = null;
+      
+      if (elemBelow) {
+        let targetElement: Element | null = elemBelow;
+        
+        while (targetElement && !targetTaskId) {
+          const dataTaskId = targetElement.getAttribute("data-task-id");
+          if (dataTaskId && dataTaskId !== id) { // 确保不是自身
+            targetTaskId = dataTaskId;
+            break;
+          }
+          targetElement = targetElement.parentElement;
+        }
+      }
+      
+      // 7. 先保存状态，再重置
+      const fromId = dragAnchorRef.current.fromId;
+      const toId = targetTaskId;
+      
+      // 8. 重置拖拽状态 - 重要：先重置ref，再更新React状态
+      dragAnchorRef.current.isDragging = false;
+      setIsDraggingAnchor(false);
+      
+      // 9. 调用依赖结束处理函数
+      if (onDependencyEnd) {
+        // 使用Promise确保回调函数完成后再继续
+        Promise.resolve().then(() => {
+          onDependencyEnd(toId);
+        });
+      }
+    }
+  };
+
   useEffect(() => {
-    // 当 initialPosition 属性变化时更新内部位置状态
     setPosition({
       x: alignToGrid(initialPosition.x),
       y: alignToGrid(initialPosition.y),
@@ -219,19 +296,17 @@ const Task: React.FC<TaskProps> = ({
 
   useEffect(() => {
     return () => {
+      document.removeEventListener("mousemove", handleAnchorMouseMove);
+      document.removeEventListener("mouseup", handleAnchorMouseUp);
       document.removeEventListener("mousemove", handleResizeMoveEvent);
       document.removeEventListener("mouseup", handleResizeEndEvent);
     };
   }, []);
 
   useEffect(() => {
-    // 如果当前正在拖拽且删除区域引用存在
     if (isDragging && deleteZoneRef?.current && taskRef.current) {
-      // 获取删除区域和任务的矩形边界
       const deleteRect = deleteZoneRef.current.getBoundingClientRect();
       const taskRect = taskRef.current.getBoundingClientRect();
-
-      // 检查重叠状态
       const isOverlap = checkOverlap(taskRect, deleteRect);
       setIsOverlapping(isOverlap);
     } else {
@@ -242,10 +317,10 @@ const Task: React.FC<TaskProps> = ({
   return (
     <div
       ref={(node) => {
-        // 同时设置 drag ref 和 我们自己的 ref
         drag(node as HTMLDivElement);
         if (node) taskRef.current = node;
       }}
+      data-task-id={id}
       style={{
         position: "absolute",
         left: position.x + (dragOffset?.x || 0),
@@ -295,7 +370,6 @@ const Task: React.FC<TaskProps> = ({
           </div>
         )}
 
-        {/* 调整大小的手柄 */}
         <div
           style={{
             position: "absolute",
@@ -305,11 +379,11 @@ const Task: React.FC<TaskProps> = ({
             height: 16,
             cursor: "nwse-resize",
             background: "transparent",
-            zIndex: 10, // 增加z-index确保在最上层
-            touchAction: "none", // 禁用默认触摸行为
+            zIndex: 10,
+            touchAction: "none",
           }}
           onMouseDown={(e) => {
-            e.stopPropagation(); // 确保事件不会传播
+            e.stopPropagation();
             handleResizeStart(e);
           }}
         >
@@ -318,13 +392,33 @@ const Task: React.FC<TaskProps> = ({
               position: "absolute",
               bottom: 6,
               right: 6,
-              width: 8, // 增大手柄点的尺寸
-              height: 8, // 增大手柄点的尺寸
+              width: 8,
+              height: 8,
               backgroundColor: "#6ECD4B",
               borderRadius: "50%",
             }}
           />
         </div>
+
+        <div
+          id={`anchor-${id}`}
+          className="task-anchor"
+          style={{
+            position: "absolute",
+            bottom: -10,
+            left: "50%",
+            transform: "translateX(-50%)",
+            width: 12,
+            height: 12,
+            backgroundColor: "#4a8af4",
+            borderRadius: "50%",
+            border: "2px solid white",
+            cursor: "pointer",
+            boxShadow: "0 2px 3px rgba(0, 0, 0, 0.3)",
+            zIndex: 20,
+          }}
+          onMouseDown={handleAnchorMouseDown}
+        />
       </div>
     </div>
   );

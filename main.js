@@ -22,7 +22,7 @@ function createWindow() {
     },
   });
 
-  Menu.setApplicationMenu(null);
+  // Menu.setApplicationMenu(null);
 
   if (app.isPackaged) {
     win.loadFile("./gui/build/index.html");
