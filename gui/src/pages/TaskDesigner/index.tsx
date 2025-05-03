@@ -7,6 +7,7 @@ import ConfigArea from "./ConfigArea";
 import TaskArea from "./TaskArea";
 
 import DraggableDivider from "~/components/DraggableDivider";
+import { useProject } from "~/components/contexts/ProjectContext";
 import "./styles.css";
 
 interface TaskDesignerProps {
@@ -14,6 +15,7 @@ interface TaskDesignerProps {
 }
 
 export const Page: FC<TaskDesignerProps> = ({ onBack }) => {
+  const { projectInfo } = useProject();
   const [topHeight, setTopHeight] = useState(250); // 将初始高度从200px修改为250px
 
   const handleDividerDrag = (deltaY: number) => {
@@ -39,7 +41,7 @@ export const Page: FC<TaskDesignerProps> = ({ onBack }) => {
       </Button>
       <Header
         as="h1"
-        content="任务设计器"
+        content={projectInfo?.projectName || "任务设计器"}
         textAlign="center"
         className="task-designer-header"
       />

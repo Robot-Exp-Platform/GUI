@@ -1,0 +1,6 @@
+packages:
+  - gui
+ignoredBuiltDependencies:
+  - '@swc/core'
+  - electron
+  - esbuild

@@ -3,9 +3,6 @@
   "version": "1.0.0",
   "description": "GUI of roplat",
   "main": "main.js",
-  "workspaces": [
-    "gui"
-  ],
   "scripts": {
     "start": "electron .",
     "test": "echo \"Error: no test specified\" && exit 1",

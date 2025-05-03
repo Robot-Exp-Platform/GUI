@@ -5,6 +5,7 @@ import ReactDOM from "react-dom/client";
 import { Home, TaskDesigner, UIDesigner } from "./pages";
 import { Container } from "semantic-ui-react";
 import "semantic-ui-css/semantic.min.css";
+import { ProjectProvider } from "./components/contexts/ProjectContext";
 
 const App = () => {
   const [page, setPage] = useState("home");
@@ -24,7 +25,9 @@ const App = () => {
 
   return (
     <React.StrictMode>
-      <Container style={{minWidth: "100vw"}}>{renderPage()}</Container>
+      <ProjectProvider>
+        <Container style={{minWidth: "100vw"}}>{renderPage()}</Container>
+      </ProjectProvider>
     </React.StrictMode>
   );
 };
