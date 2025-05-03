@@ -4,7 +4,7 @@ import Task from "../../components/Task";
 import { conv_ref } from "~/utils";
 import DeleteZoneContext from "~/components/contexts/DeleteZoneContext";
 
-const TaskMainBottom: FC = () => {
+const TaskArea: FC = () => {
   const [tasks, setTasks] = useState<
     Array<{
       id: string;
@@ -38,9 +38,7 @@ const TaskMainBottom: FC = () => {
       // 确保只处理容器背景的点击，不处理子元素
       if (
         e.target === container ||
-        (e.target as HTMLElement).classList.contains(
-          "task-main-bottom-container"
-        )
+        (e.target as HTMLElement).classList.contains("task-area-container")
       ) {
         // 保存所有任务的初始位置
         const tasksPositions = new Map<string, { x: number; y: number }>();
@@ -137,9 +135,7 @@ const TaskMainBottom: FC = () => {
     const y = e.clientY - rect.top;
 
     // 如果点击的是容器而不是任务
-    if (
-      (e.target as HTMLElement).classList.contains("task-main-bottom-container")
-    ) {
+    if ((e.target as HTMLElement).classList.contains("task-area-container")) {
       // 将位置调整为最近的20px网格
       const snapX = Math.round(x / 20) * 20;
       const snapY = Math.round(y / 20) * 20;
@@ -205,13 +201,13 @@ const TaskMainBottom: FC = () => {
   };
 
   return (
-    <div className="task-main-bottom">
+    <div className="task-area">
       <div className="task-area-header">
         <h3>任务区（定义任务、目标和节点）（双击新建任务）</h3>
       </div>
       <div
         ref={containerRef}
-        className={`task-main-bottom-container ${showGrid ? "show-grid" : ""}`}
+        className={`task-area-container ${showGrid ? "show-grid" : ""}`}
         onDoubleClick={handleDoubleClick}
         style={{
           position: "relative",
@@ -249,4 +245,4 @@ const TaskMainBottom: FC = () => {
   );
 };
 
-export default TaskMainBottom;
+export default TaskArea;

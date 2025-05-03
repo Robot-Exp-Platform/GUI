@@ -30,7 +30,7 @@
   flex-direction: column;
 }
 
-.task-main-top {
+.config-area {
   flex: 4;
   height: 100%;
   min-height: 200px; /* 添加最小高度 */
@@ -44,7 +44,7 @@
   justify-content: center;
 }
 
-.task-main-bottom {
+.task-area {
   flex: 6;
   height: 100%;
   background: #f5f5f5;
@@ -204,7 +204,7 @@
   font-style: italic;
 }
 
-.task-main-bottom-container {
+.task-area-container {
   background-color: #f5f5f5;
   border-radius: 4px;
   box-shadow: inset 0 0 5px rgba(0, 0, 0, 0.05);
@@ -212,7 +212,7 @@
 }
 
 /* 添加网格样式 */
-.task-main-bottom-container.show-grid {
+.task-area-container.show-grid {
   background-image: linear-gradient(
       to right,
       rgba(150, 150, 150, 0.1) 1px,
@@ -224,7 +224,7 @@
 }
 
 /* 加深每5格的网格线，以便更好地对齐 */
-.task-main-bottom-container.show-grid::before {
+.task-area-container.show-grid::before {
   content: "";
   position: absolute;
   top: 0;

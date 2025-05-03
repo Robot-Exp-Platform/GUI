@@ -3,8 +3,8 @@ import { Button, Header, Icon } from "semantic-ui-react";
 import { DndProvider } from "react-dnd";
 import { HTML5Backend } from "react-dnd-html5-backend";
 import TaskSidebar from "./TaskSidebar";
-import TaskMainTop from "./TaskMainTop";
-import TaskMainBottom from "./TaskMainBottom";
+import ConfigArea from "./ConfigArea";
+import TaskArea from "./TaskArea";
 
 import DraggableDivider from "~/components/DraggableDivider";
 import "./styles.css";
@@ -48,11 +48,11 @@ export const Page: FC<TaskDesignerProps> = ({ onBack }) => {
           <TaskSidebar />
           <div className="task-designer-main-content">
             <div style={{ height: `${topHeight}px`, overflow: "auto" }}>
-              <TaskMainTop />
+              <ConfigArea />
             </div>
             <DraggableDivider onDrag={handleDividerDrag} />
             <div style={{ flex: 1, overflow: "visible" }}>
-              <TaskMainBottom />
+              <TaskArea />
             </div>
           </div>
         </div>

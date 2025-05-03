@@ -3,7 +3,7 @@ import "./styles.css";
 import { ConfigContext } from "~/components/contexts/ConfigContext";
 import TaskConfigSection from "~/components/ConfigSection/TaskConfigSection";
 
-const TaskMainTop: FC = () => {
+const ConfigArea: FC = () => {
   // ID 管理
   const [nextId, setNextId] = useState(1);
   const incrementId = () => {
@@ -36,7 +36,7 @@ const TaskMainTop: FC = () => {
 
   return (
     <ConfigContext.Provider value={{ nextId, incrementId }}>
-      <div className="task-main-top">
+      <div className="config-area">
         <div className="config-area-header">
           <h3>配置区（拖入机器人和传感器）</h3>
         </div>
@@ -61,4 +61,4 @@ const TaskMainTop: FC = () => {
   );
 };
 
-export default TaskMainTop;
+export default ConfigArea;
