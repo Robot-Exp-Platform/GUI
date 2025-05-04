@@ -20,13 +20,3 @@ export const createSensor = (
     params: {}, // 默认为空对象
   };
 };
-
-// 创建A型传感器实例
-export const createSensorA = (id: number): Sensor => {
-  return createSensor(id, "sensor_a");
-};
-
-// 创建B型传感器实例
-export const createSensorB = (id: number): Sensor => {
-  return createSensor(id, "sensor_b");
-};

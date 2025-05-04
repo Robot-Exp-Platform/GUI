@@ -1,4 +1,4 @@
-import React, { FC, useCallback, useEffect, useRef } from "react";
+import React, { FC, useCallback, useEffect } from "react";
 import { useDrop } from "react-dnd";
 import { conv_ref } from "~/utils";
 import TaskConfigItem from "~/components/ConfigItem/TaskConfigItem";
@@ -21,36 +21,15 @@ const TaskConfigSection: FC<TaskConfigSectionProps> = ({
   onItemAdd,
   onItemDelete,
 }) => {
-  // 使用ref跟踪上一次处理的项目，防止重复处理
-  const lastDroppedItem = useRef<{ type: string; name: string } | null>(null);
-  const lastDropTime = useRef<number>(0);
-
-  // 防止连续快速的重复拖放操作
+  // 简化后的处理拖放逻辑
   const handleDrop = useCallback(
     (item: {
       type: "robot" | "sensor";
       name: string;
-      specificType?: string;
+      specificType: string;
     }) => {
-      const now = Date.now();
-
-      // 检查是否是重复拖放（防抖）- 间隔小于1秒的相同项拖放被视为重复
-      const isDuplicate =
-        lastDroppedItem.current?.type === item.type &&
-        lastDroppedItem.current?.name === item.name &&
-        now - lastDropTime.current < 1000;
-
-      if (isDuplicate) {
-        console.log("防止重复拖放:", item);
-        return { dropped: false };
-      }
-
-      // 记录当前拖放的项目和时间
-      lastDroppedItem.current = item;
-      lastDropTime.current = now;
-
       console.log(`Dropped item of type ${item.type} with name ${item.name}`);
-      onItemAdd(item.type, item.name);
+      onItemAdd(item.type, item.specificType);
       return { dropped: true };
     },
     [onItemAdd]
@@ -76,7 +55,7 @@ const TaskConfigSection: FC<TaskConfigSectionProps> = ({
       }),
     }),
     [acceptType, handleDrop]
-  ); // 明确声明依赖项
+  );
 
   // 调试用
   useEffect(() => {
@@ -118,5 +97,4 @@ const TaskConfigSection: FC<TaskConfigSectionProps> = ({
   );
 };
 
-// 使用 React.memo 避免不必要的重新渲染
-export default React.memo(TaskConfigSection);
+export default TaskConfigSection;

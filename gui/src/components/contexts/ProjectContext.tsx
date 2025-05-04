@@ -6,7 +6,7 @@ import React, {
   useEffect,
   useCallback,
 } from "react";
-import { Project, ProjectConfig } from "~/types/Project";
+import { Project, ProjectConfig, CounterType } from "~/types";
 import { Robot } from "~/types/Robot";
 import { Sensor } from "~/types/Sensor";
 import { Task } from "~/types/Task";
@@ -15,24 +15,8 @@ interface ProjectContextType {
   project: Project | null;
   setProject: (project: Project | null) => void;
   loadProject: (projectPath: string, projectName: string) => Promise<boolean>;
-  saveProject: () => Promise<boolean>;
-  updateProject: () => void;
-  // 项目操作API
-  addRobot: (robot: Robot) => Promise<void>;
-  removeRobot: (id: number) => Promise<void>;
-  addSensor: (sensor: Sensor) => Promise<void>;
-  removeSensor: (id: number) => Promise<void>;
-  addTask: (task: Task) => Promise<void>;
-  removeTask: (id: number) => Promise<void>;
-  getNextId: () => number;
-  getNextTypeCounter: (
-    type: "panda" | "ur" | "sensor_a" | "sensor_b" | "task"
-  ) => number;
-  // 任务依赖关系API
-  addTaskDependency: (fromTaskId: string, toTaskId: string) => Promise<void>;
-  removeTaskDependency: (fromTaskId: string, toTaskId: string) => Promise<void>;
-  getTaskDependencies: () => Array<[string, string]>;
-  hasCircularDependency: (fromTaskId: string, toTaskId: string) => boolean;
+  updateProject: () => Promise<void>;
+  getNextTypeCounter: (type: CounterType) => number;
 }
 
 const ProjectContext = createContext<ProjectContextType | undefined>(undefined);
@@ -65,141 +49,28 @@ export const ProjectProvider: React.FC<{ children: ReactNode }> = ({
     []
   );
 
-  // 保存项目
-  const saveProject = useCallback(async (): Promise<boolean> => {
-    if (!project) return false;
-
-    return await project.save();
-  }, [project]);
-
-  // 更新组件状态以触发重新渲染，但确保返回 Project 实例
-  const updateProject = useCallback(() => {
-    setProject((prev) => {
-      if (!prev) return null;
-      
-      // 返回原始 Project 实例，不创建新的实例
-      // 这样只是触发状态更新，而不会丢失 Project 类的方法
-      return prev;
-    });
-  }, []);
-
-  // 项目操作API - 所有方法现在都是异步的
-  const addRobot = useCallback(
-    async (robot: Robot) => {
-      if (!project) return;
-
-      await project.addRobot(robot);
-      updateProject();
-    },
-    [project, updateProject]
-  );
-
-  const removeRobot = useCallback(
-    async (id: number) => {
-      if (!project) return;
-
-      await project.removeRobot(id);
-      updateProject();
-    },
-    [project, updateProject]
-  );
-
-  const addSensor = useCallback(
-    async (sensor: Sensor) => {
-      if (!project) return;
-
-      await project.addSensor(sensor);
-      updateProject();
-    },
-    [project, updateProject]
-  );
-
-  const removeSensor = useCallback(
-    async (id: number) => {
-      if (!project) return;
-
-      await project.removeSensor(id);
-      updateProject();
-    },
-    [project, updateProject]
-  );
-
-  const addTask = useCallback(
-    async (task: Task) => {
-      if (!project) return;
-
-      await project.addTask(task);
-      updateProject();
-    },
-    [project, updateProject]
-  );
-
-  const removeTask = useCallback(
-    async (id: number) => {
-      if (!project) return;
-
-      await project.removeTask(id);
-      updateProject();
-    },
-    [project, updateProject]
-  );
-
-  const getNextId = useCallback((): number => {
-    if (!project) return -1;
-
-    return project.getNextId();
-  }, [project]);
-
   const getNextTypeCounter = useCallback(
-    (type: "panda" | "ur" | "sensor_a" | "sensor_b" | "task"): number => {
+    (type: CounterType): number => {
       if (!project) return -1;
-
       return project.getNextTypeCounter(type);
     },
     [project]
   );
 
-  // 任务依赖关系API
-  const addTaskDependency = useCallback(
-    async (fromTaskId: string, toTaskId: string) => {
-      if (!project) return;
+  // 更新组件状态以触发重新渲染，并自动保存项目配置
+  const updateProject = useCallback(async () => {
+    setProject((prev) => {
+      if (!prev) return null;
 
-      // 先检查是否会形成循环依赖
-      if (project.hasCircularDependency(fromTaskId, toTaskId)) {
-        // 如果会形成循环依赖，抛出错误
-        throw new Error(`添加依赖关系 ${fromTaskId} -> ${toTaskId} 会导致循环依赖`);
-      }
+      // 异步保存项目配置
+      prev.save().catch((error) => {
+        console.error("自动保存项目配置失败:", error);
+      });
 
-      await project.addTaskDependency(fromTaskId, toTaskId);
-      updateProject();
-    },
-    [project, updateProject]
-  );
-
-  const removeTaskDependency = useCallback(
-    async (fromTaskId: string, toTaskId: string) => {
-      if (!project) return;
-
-      await project.removeTaskDependency(fromTaskId, toTaskId);
-      updateProject();
-    },
-    [project, updateProject]
-  );
-
-  const getTaskDependencies = useCallback((): Array<[string, string]> => {
-    if (!project) return [];
-
-    return project.getTaskDependencies();
-  }, [project]);
-
-  const hasCircularDependency = useCallback(
-    (fromTaskId: string, toTaskId: string): boolean => {
-      if (!project) return false;
-
-      return project.hasCircularDependency(fromTaskId, toTaskId);
-    },
-    [project]
-  );
+      // 返回原始 Project 实例，不创建新的实例
+      return prev;
+    });
+  }, []);
 
   return (
     <ProjectContext.Provider
@@ -207,20 +78,8 @@ export const ProjectProvider: React.FC<{ children: ReactNode }> = ({
         project,
         setProject,
         loadProject,
-        saveProject,
         updateProject,
-        addRobot,
-        removeRobot,
-        addSensor,
-        removeSensor,
-        addTask,
-        removeTask,
-        getNextId,
         getNextTypeCounter,
-        addTaskDependency,
-        removeTaskDependency,
-        getTaskDependencies,
-        hasCircularDependency,
       }}
     >
       {children}

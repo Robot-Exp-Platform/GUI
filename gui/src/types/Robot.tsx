@@ -25,12 +25,14 @@ export const createRobot = (id: number, robot_type: RobotType): Robot => {
   };
 };
 
-// 创建一个熊猫机器人实例
-export const createPandaRobot = (id: number): Robot => {
-  return createRobot(id, "panda");
-};
+// export const createTypedRobot = (id: number, type: ): Robot => {
 
-// 创建一个UR机器人实例
-export const createURRobot = (id: number): Robot => {
-  return createRobot(id, "ur");
-};
+// // 创建一个熊猫机器人实例
+// export const createPandaRobot = (id: number): Robot => {
+//   return createRobot(id, "panda");
+// };
+
+// // 创建一个UR机器人实例
+// export const createURRobot = (id: number): Robot => {
+//   return createRobot(id, "ur");
+// };

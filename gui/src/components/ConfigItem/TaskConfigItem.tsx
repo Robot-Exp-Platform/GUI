@@ -24,12 +24,12 @@ const TaskConfigItem: FC<TaskConfigItemProps> = ({
   robotType,
   sensorType,
 }) => {
-  const { project, addRobot, addSensor } = useProject();
+  const { project, updateProject } = useProject();
   const [isEditorOpen, setIsEditorOpen] = useState(false);
   const [popupOpen, setPopupOpen] = useState(false);
   // 添加状态来管理实际显示的名称
   const [displayName, setDisplayName] = useState<string>(name);
-  
+
   // 当传入名称变化时更新显示名称
   useEffect(() => {
     setDisplayName(name);
@@ -37,11 +37,11 @@ const TaskConfigItem: FC<TaskConfigItemProps> = ({
 
   // 获取当前机器人或传感器对象
   const getRobotById = (id: number) => {
-    return project?.config.robots.find(robot => robot.id === id);
+    return project?.config.robots.find((robot) => robot.id === id);
   };
 
   const getSensorById = (id: number) => {
-    return project?.config.sensors.find(sensor => sensor.id === id);
+    return project?.config.sensors.find((sensor) => sensor.id === id);
   };
 
   const handleContextMenu = (e: React.MouseEvent) => {
@@ -54,40 +54,50 @@ const TaskConfigItem: FC<TaskConfigItemProps> = ({
     setIsEditorOpen(true); // 打开编辑器
   };
 
-  // 保存更新后的机器人配置
+  // 更新机器人配置
   const handleSaveRobot = async (updatedRobot: Robot) => {
     try {
-      await addRobot(updatedRobot);
-      // 更新显示名称
-      setDisplayName(updatedRobot.name);
-      return true;
+      // 查找现有机器人的索引
+      const robotIndex = project?.config.robots.findIndex(
+        (r) => r.id === updatedRobot.id
+      );
+
+      if (robotIndex !== undefined && robotIndex >= 0 && project) {
+        // 直接更新数组中的对象
+        project.config.robots[robotIndex] = updatedRobot;
+        // 保存项目并更新UI
+        await project.save();
+        updateProject();
+        // 更新显示名称
+        setDisplayName(updatedRobot.name);
+        return true;
+      } else {
+        console.error("找不到要更新的机器人:", updatedRobot.id);
+        return false;
+      }
     } catch (error) {
       console.error("保存机器人配置失败:", error);
       return false;
     }
   };
 
-  // 保存更新后的传感器配置
+  // 更新传感器配置
   const handleSaveSensor = async (updatedSensor: Sensor) => {
     try {
-      // 先检查传感器是否已存在，如果存在则先移除旧的，再添加新的
-      const existingSensor = getSensorById(updatedSensor.id);
-      if (existingSensor) {
-        // 创建与原始对象相同引用的副本以确保正确更新
-        const updatedSensorCopy = {
-          ...updatedSensor
-        };
-        
-        // 先删除旧的传感器
-        await project?.removeSensor(updatedSensor.id);
-        
-        // 添加更新后的传感器
-        await addSensor(updatedSensorCopy);
-        
+      // 查找现有传感器的索引
+      const sensorIndex = project?.config.sensors.findIndex(
+        (s) => s.id === updatedSensor.id
+      );
+
+      if (sensorIndex !== undefined && sensorIndex >= 0 && project) {
+        // 直接更新数组中的对象
+        project.config.sensors[sensorIndex] = updatedSensor;
+        // 保存项目并更新UI
+        await project.save();
+        updateProject();
         // 更新显示名称
         setDisplayName(updatedSensor.name);
-        
-        console.log("传感器更新成功:", updatedSensorCopy);
+        console.log("传感器更新成功:", updatedSensor);
         return true;
       } else {
         console.error("找不到要更新的传感器:", updatedSensor.id);
@@ -101,15 +111,19 @@ const TaskConfigItem: FC<TaskConfigItemProps> = ({
 
   // 检查是否有重名
   const checkDuplicateRobotName = (name: string, currentId: number) => {
-    return project?.config.robots.some(
-      robot => robot.name === name && robot.id !== currentId
-    ) || false;
+    return (
+      project?.config.robots.some(
+        (robot) => robot.name === name && robot.id !== currentId
+      ) || false
+    );
   };
 
   const checkDuplicateSensorName = (name: string, currentId: number) => {
-    return project?.config.sensors.some(
-      sensor => sensor.name === name && sensor.id !== currentId
-    ) || false;
+    return (
+      project?.config.sensors.some(
+        (sensor) => sensor.name === name && sensor.id !== currentId
+      ) || false
+    );
   };
 
   // 确定图标

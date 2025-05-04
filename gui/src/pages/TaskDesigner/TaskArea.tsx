@@ -22,17 +22,7 @@ interface DependencyLine {
 }
 
 const TaskArea: FC = () => {
-  const {
-    addTaskDependency,
-    removeTaskDependency,
-    getTaskDependencies,
-    hasCircularDependency,
-    addTask,
-    removeTask,
-    getNextId,
-    getNextTypeCounter,
-    project,
-  } = useProject();
+  const { project, updateProject } = useProject();
 
   // 增强版任务类型，保存完整任务信息
   interface EnhancedTask {
@@ -92,9 +82,16 @@ const TaskArea: FC = () => {
 
   // 加载依赖关系
   useEffect(() => {
-    const loadedDependencies = getTaskDependencies();
-    setDependencies(loadedDependencies);
-  }, [getTaskDependencies]);
+    if (!project) return;
+
+    // 从project.config直接获取任务依赖关系
+    setDependencies(
+      project.config.task_graph.map(([from, to]) => [
+        `task-${from}`,
+        `task-${to}`,
+      ])
+    );
+  }, [project?.config.task_graph]);
 
   // 从项目配置中加载任务
   useEffect(() => {
@@ -124,10 +121,19 @@ const TaskArea: FC = () => {
     console.log("已加载任务:", enhancedTasks);
   }, [project?.config.tasks]); // 只在任务列表真正变化时才重新加载
 
+  // 检查是否会形成循环依赖
+  const checkCircularDependency = useCallback(
+    (fromTaskId: string, toTaskId: string): boolean => {
+      if (!project) return false;
+      return project.hasCircularDependency(fromTaskId, toTaskId);
+    },
+    [project]
+  );
+
   // 计算拖拽依赖过程中所有可能导致循环依赖的任务
   const calculateCircularDependencyTasks = useCallback(
     (fromTaskId: string | null) => {
-      if (!fromTaskId) {
+      if (!fromTaskId || !project) {
         setCircularDependencyTasks([]);
         return;
       }
@@ -137,12 +143,16 @@ const TaskArea: FC = () => {
         .map((task) => task.id)
         .filter(
           (taskId) =>
-            taskId !== fromTaskId && hasCircularDependency(fromTaskId, taskId)
+            taskId !== fromTaskId &&
+            checkCircularDependency(
+              fromTaskId.replace("task-", ""),
+              taskId.replace("task-", "")
+            )
         );
 
       setCircularDependencyTasks(circularTasks);
     },
-    [tasks, hasCircularDependency]
+    [tasks, checkCircularDependency, project]
   );
 
   // 全局鼠标移动追踪，用于箭头绘制
@@ -277,18 +287,20 @@ const TaskArea: FC = () => {
           // 任务位置更新完成后，保存到配置文件
           const savePositions = async () => {
             try {
+              if (!project) return;
+
               // 为每个任务更新位置信息
               for (const task of updatedTasks) {
-                const updatedTask = createTask(task.numericId);
-                // 保留原有属性
-                updatedTask.name = task.name;
-                updatedTask.position = { ...task.position };
-                if (task.size) {
-                  updatedTask.size = { ...task.size };
+                const taskIndex = project.config.tasks.findIndex(
+                  (t) => t.id === task.numericId
+                );
+                if (taskIndex !== -1) {
+                  project.config.tasks[taskIndex].position = { ...task.position };
                 }
-                // 保存到配置
-                await addTask(updatedTask);
               }
+
+              // 保存更新
+              await updateProject();
             } catch (error) {
               console.error("批量更新任务位置失败:", error);
             }
@@ -349,7 +361,7 @@ const TaskArea: FC = () => {
       window.removeEventListener("mousemove", handleMouseMove);
       window.removeEventListener("mouseup", handleMouseUp);
     };
-  }, [tasks]);
+  }, [tasks, project, updateProject]);
 
   // 当拖拽锚点开始时，计算并标记所有可能导致循环依赖的任务
   useEffect(() => {
@@ -374,6 +386,8 @@ const TaskArea: FC = () => {
   }, [tasks, dragOffset]);
 
   const handleDoubleClick = async (e: React.MouseEvent<HTMLDivElement>) => {
+    if (!project) return;
+
     // 计算点击位置相对于容器的坐标
     const container = e.currentTarget;
     const rect = container.getBoundingClientRect();
@@ -391,8 +405,8 @@ const TaskArea: FC = () => {
       const snapX = Math.round((x - defaultWidth / 2) / 20) * 20;
       const snapY = Math.round((y - defaultHeight / 2) / 20) * 20;
 
-      // 获取新的任务ID，使用taskCounter而不是nextId
-      const numericId = getNextTypeCounter("task");
+      // 获取新的任务ID，增加taskCounter计数器
+      const numericId = ++project.config.idCounters.taskCounter;
       // 为了保持一致性，任务ID使用字符串格式
       const taskId = `task-${numericId}`;
 
@@ -404,7 +418,8 @@ const TaskArea: FC = () => {
 
       try {
         // 将任务添加到项目配置文件
-        await addTask(taskConfig);
+        project.config.tasks.push(taskConfig);
+        await updateProject();
 
         // 创建新任务UI元素
         const newTask: EnhancedTask = {
@@ -436,6 +451,8 @@ const TaskArea: FC = () => {
     id: string,
     position: { x: number; y: number }
   ) => {
+    if (!project) return;
+
     // 将位置调整为最近的20px网格
     const snapX = Math.round(position.x / 20) * 20;
     const snapY = Math.round(position.y / 20) * 20;
@@ -455,23 +472,24 @@ const TaskArea: FC = () => {
     );
 
     try {
-      // 创建更新后的任务配置并保存到项目
-      const updatedTask = createTask(task.numericId);
-      // 保留原名称并添加位置信息
-      updatedTask.name = task.name;
-      updatedTask.position = { x: snapX, y: snapY };
-      // 保留任务的大小信息
-      if (task.size) {
-        updatedTask.size = { ...task.size };
+      // 查找并更新项目配置中的任务位置
+      const taskIndex = project.config.tasks.findIndex(
+        (t) => t.id === task.numericId
+      );
+      if (taskIndex !== -1) {
+        // 保留其他属性，只更新位置
+        project.config.tasks[taskIndex].position = { x: snapX, y: snapY };
+        // 保存更新
+        await updateProject();
       }
-      // 保存更新
-      await addTask(updatedTask);
     } catch (error) {
       console.error("更新任务位置失败:", error);
     }
   };
 
   const handleTaskNameChange = async (id: string, name: string) => {
+    if (!project) return;
+
     try {
       // 查找任务以获取数字ID
       const task = tasks.find((task) => task.id === id);
@@ -485,10 +503,14 @@ const TaskArea: FC = () => {
         prevTasks.map((task) => (task.id === id ? { ...task, name } : task))
       );
 
-      // 创建更新后的任务配置并保存到项目
-      const updatedTask = createTask(task.numericId);
-      updatedTask.name = name;
-      await addTask(updatedTask); // 使用addTask更新现有任务
+      // 查找并更新项目配置中的任务名称
+      const taskIndex = project.config.tasks.findIndex(
+        (t) => t.id === task.numericId
+      );
+      if (taskIndex !== -1) {
+        project.config.tasks[taskIndex].name = name;
+        await updateProject();
+      }
     } catch (error) {
       console.error("更新任务名称失败:", error);
     }
@@ -498,6 +520,8 @@ const TaskArea: FC = () => {
     id: string,
     size: { width: number; height: number }
   ) => {
+    if (!project) return;
+
     // 将大小调整为20px的倍数
     const snapWidth = Math.round(size.width / 20) * 20;
     const snapHeight = Math.round(size.height / 20) * 20;
@@ -519,15 +543,19 @@ const TaskArea: FC = () => {
     );
 
     try {
-      // 创建更新后的任务配置并保存到项目
-      const updatedTask = createTask(task.numericId);
-      // 保留原名称和位置
-      updatedTask.name = task.name;
-      updatedTask.position = { ...task.position };
-      // 更新大小信息
-      updatedTask.size = { width: snapWidth, height: snapHeight };
-      // 保存更新
-      await addTask(updatedTask);
+      // 查找并更新项目配置中的任务大小
+      const taskIndex = project.config.tasks.findIndex(
+        (t) => t.id === task.numericId
+      );
+      if (taskIndex !== -1) {
+        // 保留其他属性，只更新大小
+        project.config.tasks[taskIndex].size = {
+          width: snapWidth,
+          height: snapHeight,
+        };
+        // 保存更新
+        await updateProject();
+      }
     } catch (error) {
       console.error("更新任务大小失败:", error);
     }
@@ -535,6 +563,8 @@ const TaskArea: FC = () => {
 
   // 处理任务删除功能
   const handleTaskDelete = async (id: string) => {
+    if (!project) return;
+
     try {
       // 查找要删除的任务，获取其数字ID
       const taskToDelete = tasks.find((task) => task.id === id);
@@ -544,12 +574,24 @@ const TaskArea: FC = () => {
       }
 
       // 从项目配置中删除任务
-      await removeTask(taskToDelete.numericId);
+      project.config.tasks = project.config.tasks.filter(
+        (t) => t.id !== taskToDelete.numericId
+      );
+
+      // 删除与此任务相关的所有依赖关系
+      project.config.task_graph = project.config.task_graph.filter(
+        ([from, to]) =>
+          from !== taskToDelete.numericId.toString() &&
+          to !== taskToDelete.numericId.toString()
+      );
+
+      // 保存更新
+      await updateProject();
 
       // 更新UI状态
       setTasks((prevTasks) => prevTasks.filter((task) => task.id !== id));
 
-      // 删除与此任务相关的所有依赖关系
+      // 更新依赖关系UI状态
       setDependencies((prevDeps) =>
         prevDeps.filter(([from, to]) => from !== id && to !== id)
       );
@@ -615,6 +657,8 @@ const TaskArea: FC = () => {
   };
 
   const handleDependencyEnd = async (toTaskId: string | null) => {
+    if (!project) return;
+
     // 获取ref中存储的当前拖拽任务ID
     const fromId = dependencyDragRef.current.fromId;
 
@@ -645,20 +689,23 @@ const TaskArea: FC = () => {
     }
 
     try {
-      // 尝试添加新的依赖关系
-      await addTaskDependency(fromId, toTaskId);
+      // 提取数字ID（去掉"task-"前缀）
+      const fromNumericId = fromId.replace("task-", "");
+      const toNumericId = toTaskId.replace("task-", "");
 
-      // 只有在成功添加后才更新本地状态
-      setDependencies((prevDeps) => {
-        // 检查是否已存在相同的依赖关系
-        const exists = prevDeps.some(
-          ([from, to]) => from === fromId && to === toTaskId
-        );
-        if (!exists) {
-          return [...prevDeps, [fromId, toTaskId]];
-        }
-        return prevDeps;
-      });
+      // 检查是否已存在相同的依赖关系
+      const exists = project.config.task_graph.some(
+        ([from, to]) => from === fromNumericId && to === toNumericId
+      );
+
+      if (!exists) {
+        // 添加新的依赖关系
+        project.config.task_graph.push([fromNumericId, toNumericId]);
+        await updateProject();
+
+        // 更新本地状态
+        setDependencies((prevDeps) => [...prevDeps, [fromId, toTaskId]]);
+      }
     } catch (error) {
       // 如果发生错误（包括循环依赖错误），记录到控制台但不更新状态
       console.error("TaskArea: 添加依赖关系时出错:", error);
