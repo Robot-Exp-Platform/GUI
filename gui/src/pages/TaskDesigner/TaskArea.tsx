@@ -31,18 +31,18 @@ const TaskArea: FC = () => {
     removeTask,
     getNextId,
     getNextTypeCounter,
-    project
+    project,
   } = useProject();
-  
+
   // 增强版任务类型，保存完整任务信息
   interface EnhancedTask {
-    id: string;  // UI 中显示的 ID
+    id: string; // UI 中显示的 ID
     numericId: number; // 实际存储的数字 ID
     position: { x: number; y: number };
     name: string;
     size?: { width: number; height: number };
   }
-  
+
   const [tasks, setTasks] = useState<EnhancedTask[]>([]);
   const containerRef = useRef<HTMLDivElement>(null);
   // 添加网格显示状态
@@ -99,30 +99,18 @@ const TaskArea: FC = () => {
   // 从项目配置中加载任务
   useEffect(() => {
     if (!project) return;
-    
+
     // 从项目配置中获取任务
     const projectTasks = project.config.tasks || [];
-    
-    // 保留映射，用于跟踪任务ID与位置的关系
-    const taskPositionMap = new Map<number, { x: number; y: number }>();
-    const taskSizeMap = new Map<number, { width: number; height: number }>();
-    
-    // 记录现有任务的位置和大小
-    tasks.forEach(task => {
-      taskPositionMap.set(task.numericId, task.position);
-      if (task.size) {
-        taskSizeMap.set(task.numericId, task.size);
-      }
-    });
-    
+
     // 转换成增强型任务对象
     const enhancedTasks: EnhancedTask[] = projectTasks.map((task) => {
-      // 检查是否有已保存的位置，如果没有，使用默认位置
-      const position = taskPositionMap.get(task.id) || { x: 100, y: 100 };
-      
-      // 使用已保存的大小或默认大小
-      const size = taskSizeMap.get(task.id) || { width: 120, height: 80 };
-      
+      // 直接使用配置中的位置，如果不存在则使用默认位置
+      const position = task.position || { x: 100, y: 100 };
+
+      // 直接使用配置中的大小，如果不存在则使用默认大小
+      const size = task.size || { width: 120, height: 80 };
+
       return {
         id: `task-${task.id}`,
         numericId: task.id,
@@ -133,7 +121,7 @@ const TaskArea: FC = () => {
     });
 
     setTasks(enhancedTasks);
-    
+    console.log("已加载任务:", enhancedTasks);
   }, [project?.config.tasks]); // 只在任务列表真正变化时才重新加载
 
   // 计算拖拽依赖过程中所有可能导致循环依赖的任务
@@ -170,9 +158,9 @@ const TaskArea: FC = () => {
           x: e.clientX - containerRect.left,
           y: e.clientY - containerRect.top,
         };
-        
+
         // 只有当位置真正改变时才更新状态，避免不必要的重新渲染
-        setMousePosition(prevPos => {
+        setMousePosition((prevPos) => {
           if (prevPos.x !== newPosition.x || prevPos.y !== newPosition.y) {
             return newPosition;
           }
@@ -255,7 +243,7 @@ const TaskArea: FC = () => {
     };
 
     // 鼠标抬起事件处理
-    const handleMouseUp = (e: MouseEvent) => {
+    const handleMouseUp = async (e: MouseEvent) => {
       if (!dragState.current.isDragging) return;
 
       // 计算总移动距离
@@ -286,6 +274,29 @@ const TaskArea: FC = () => {
             };
           });
 
+          // 任务位置更新完成后，保存到配置文件
+          const savePositions = async () => {
+            try {
+              // 为每个任务更新位置信息
+              for (const task of updatedTasks) {
+                const updatedTask = createTask(task.numericId);
+                // 保留原有属性
+                updatedTask.name = task.name;
+                updatedTask.position = { ...task.position };
+                if (task.size) {
+                  updatedTask.size = { ...task.size };
+                }
+                // 保存到配置
+                await addTask(updatedTask);
+              }
+            } catch (error) {
+              console.error("批量更新任务位置失败:", error);
+            }
+          };
+
+          // 执行保存操作
+          savePositions();
+
           // 任务位置更新完成后，在下一个渲染周期重置偏移量
           requestAnimationFrame(() => {
             setDragOffset({ x: 0, y: 0 });
@@ -296,10 +307,11 @@ const TaskArea: FC = () => {
             // 使用更可靠的方式强制更新箭头位置
             setTimeout(() => {
               // 获取所有箭头元素
-              const arrowElements = document.querySelectorAll('[id^="xarrow-"]');
-              
+              const arrowElements =
+                document.querySelectorAll('[id^="xarrow-"]');
+
               // 触发重新布局
-              arrowElements.forEach(arrow => {
+              arrowElements.forEach((arrow) => {
                 if (arrow instanceof HTMLElement) {
                   // 先隐藏再显示，强制浏览器重新计算位置
                   const currentDisplay = arrow.style.display;
@@ -309,9 +321,9 @@ const TaskArea: FC = () => {
                   arrow.style.display = currentDisplay;
                 }
               });
-              
+
               // 增加计数器触发额外的更新机制
-              setArrowUpdateCounter(prev => prev + 1);
+              setArrowUpdateCounter((prev) => prev + 1);
             }, 0);
           });
 
@@ -373,11 +385,11 @@ const TaskArea: FC = () => {
       // 定义任务的默认尺寸（与其他地方保持一致）
       const defaultWidth = 120;
       const defaultHeight = 80;
-      
+
       // 计算任务左上角位置，使点击位置成为任务的中心
       // 将位置调整为最近的20px网格
-      const snapX = Math.round((x - defaultWidth/2) / 20) * 20;
-      const snapY = Math.round((y - defaultHeight/2) / 20) * 20;
+      const snapX = Math.round((x - defaultWidth / 2) / 20) * 20;
+      const snapY = Math.round((y - defaultHeight / 2) / 20) * 20;
 
       // 获取新的任务ID，使用taskCounter而不是nextId
       const numericId = getNextTypeCounter("task");
@@ -386,18 +398,21 @@ const TaskArea: FC = () => {
 
       // 创建新任务配置
       const taskConfig = createTask(numericId);
-      
+      // 设置位置和大小
+      taskConfig.position = { x: snapX, y: snapY };
+      taskConfig.size = { width: defaultWidth, height: defaultHeight };
+
       try {
         // 将任务添加到项目配置文件
         await addTask(taskConfig);
-        
+
         // 创建新任务UI元素
         const newTask: EnhancedTask = {
           id: taskId,
           numericId: numericId,
           position: { x: snapX, y: snapY },
           name: taskConfig.name,
-          size: { width: defaultWidth, height: defaultHeight }
+          size: { width: defaultWidth, height: defaultHeight },
         };
 
         setTasks((prevTasks) => [...prevTasks, newTask]);
@@ -417,7 +432,7 @@ const TaskArea: FC = () => {
     }
   };
 
-  const handleTaskPositionChange = (
+  const handleTaskPositionChange = async (
     id: string,
     position: { x: number; y: number }
   ) => {
@@ -425,27 +440,51 @@ const TaskArea: FC = () => {
     const snapX = Math.round(position.x / 20) * 20;
     const snapY = Math.round(position.y / 20) * 20;
 
+    // 查找任务以获取数字ID
+    const task = tasks.find((task) => task.id === id);
+    if (!task) {
+      console.error("找不到要移动的任务:", id);
+      return;
+    }
+
+    // 更新本地状态
     setTasks((prevTasks) =>
-      prevTasks.map((task) =>
-        task.id === id ? { ...task, position: { x: snapX, y: snapY } } : task
+      prevTasks.map((t) =>
+        t.id === id ? { ...t, position: { x: snapX, y: snapY } } : t
       )
     );
+
+    try {
+      // 创建更新后的任务配置并保存到项目
+      const updatedTask = createTask(task.numericId);
+      // 保留原名称并添加位置信息
+      updatedTask.name = task.name;
+      updatedTask.position = { x: snapX, y: snapY };
+      // 保留任务的大小信息
+      if (task.size) {
+        updatedTask.size = { ...task.size };
+      }
+      // 保存更新
+      await addTask(updatedTask);
+    } catch (error) {
+      console.error("更新任务位置失败:", error);
+    }
   };
 
   const handleTaskNameChange = async (id: string, name: string) => {
     try {
       // 查找任务以获取数字ID
-      const task = tasks.find(task => task.id === id);
+      const task = tasks.find((task) => task.id === id);
       if (!task) {
         console.error("找不到要重命名的任务:", id);
         return;
       }
-      
+
       // 更新本地状态
-      setTasks(prevTasks =>
-        prevTasks.map(task => (task.id === id ? { ...task, name } : task))
+      setTasks((prevTasks) =>
+        prevTasks.map((task) => (task.id === id ? { ...task, name } : task))
       );
-      
+
       // 创建更新后的任务配置并保存到项目
       const updatedTask = createTask(task.numericId);
       updatedTask.name = name;
@@ -455,7 +494,7 @@ const TaskArea: FC = () => {
     }
   };
 
-  const handleTaskSizeChange = (
+  const handleTaskSizeChange = async (
     id: string,
     size: { width: number; height: number }
   ) => {
@@ -463,28 +502,50 @@ const TaskArea: FC = () => {
     const snapWidth = Math.round(size.width / 20) * 20;
     const snapHeight = Math.round(size.height / 20) * 20;
 
+    // 查找任务以获取数字ID
+    const task = tasks.find((task) => task.id === id);
+    if (!task) {
+      console.error("找不到要调整大小的任务:", id);
+      return;
+    }
+
+    // 更新本地状态
     setTasks((prevTasks) =>
-      prevTasks.map((task) =>
-        task.id === id
-          ? { ...task, size: { width: snapWidth, height: snapHeight } }
-          : task
+      prevTasks.map((t) =>
+        t.id === id
+          ? { ...t, size: { width: snapWidth, height: snapHeight } }
+          : t
       )
     );
+
+    try {
+      // 创建更新后的任务配置并保存到项目
+      const updatedTask = createTask(task.numericId);
+      // 保留原名称和位置
+      updatedTask.name = task.name;
+      updatedTask.position = { ...task.position };
+      // 更新大小信息
+      updatedTask.size = { width: snapWidth, height: snapHeight };
+      // 保存更新
+      await addTask(updatedTask);
+    } catch (error) {
+      console.error("更新任务大小失败:", error);
+    }
   };
 
   // 处理任务删除功能
   const handleTaskDelete = async (id: string) => {
     try {
       // 查找要删除的任务，获取其数字ID
-      const taskToDelete = tasks.find(task => task.id === id);
+      const taskToDelete = tasks.find((task) => task.id === id);
       if (!taskToDelete) {
         console.error("找不到要删除的任务:", id);
         return;
       }
-      
+
       // 从项目配置中删除任务
       await removeTask(taskToDelete.numericId);
-      
+
       // 更新UI状态
       setTasks((prevTasks) => prevTasks.filter((task) => task.id !== id));
 
@@ -507,7 +568,11 @@ const TaskArea: FC = () => {
   };
 
   // 处理依赖关系的创建
-  const handleDependencyStart = (fromTaskId: string, anchorPoint?: string, initialPosition?: { x: number; y: number }) => {
+  const handleDependencyStart = (
+    fromTaskId: string,
+    anchorPoint?: string,
+    initialPosition?: { x: number; y: number }
+  ) => {
     // 只有在容器引用可用时才继续
     if (!containerRef.current) {
       return;
