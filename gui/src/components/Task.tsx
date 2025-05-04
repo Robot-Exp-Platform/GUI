@@ -20,7 +20,7 @@ interface TaskProps {
   onResizeStart?: () => void;
   onResizeEnd?: () => void;
   dragOffset?: { x: number; y: number };
-  onDependencyStart?: (taskId: string, anchorPoint: string) => void;
+  onDependencyStart?: (taskId: string, anchorPoint: string, initialMousePosition?: { x: number; y: number }) => void;
   onDependencyDrag?: (e: MouseEvent) => void;
   onDependencyEnd?: (targetTaskId: string | null) => void;
   isCircularDependency?: boolean; // 添加是否会导致循环依赖的属性
@@ -199,19 +199,20 @@ const Task: React.FC<TaskProps> = ({
     dragAnchorRef.current.isDragging = true;
     dragAnchorRef.current.fromId = id;
 
-    // 通知父组件开始创建依赖
-    onDependencyStart?.(id, "bottom");
-
-    // 立即触发一次鼠标移动事件以初始化箭头位置
-    if (onDependencyDrag) {
-      onDependencyDrag(e.nativeEvent);
-
-      // 再次触发，确保位置已经更新
-      requestAnimationFrame(() => {
-        if (dragAnchorRef.current.isDragging && onDependencyDrag) {
-          onDependencyDrag(e.nativeEvent);
-        }
-      });
+    // 计算鼠标位置相对于容器的坐标（用于初始化箭头位置）
+    let initialMousePosition;
+    if (containerRef && containerRef.current) {
+      const containerRect = containerRef.current.getBoundingClientRect();
+      initialMousePosition = {
+        x: e.clientX - containerRect.left,
+        y: e.clientY - containerRect.top
+      };
+      
+      // 通知父组件开始创建依赖，并传递初始鼠标位置
+      onDependencyStart?.(id, "bottom", initialMousePosition);
+    } else {
+      // 如果无法获取容器位置，则不传递初始位置
+      onDependencyStart?.(id, "bottom");
     }
 
     // 添加全局鼠标移动和抬起事件监听，使用捕获阶段确保优先处理

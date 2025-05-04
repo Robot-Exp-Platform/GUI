@@ -12,6 +12,7 @@ import { conv_ref } from "~/utils";
 import DeleteZoneContext from "~/components/contexts/DeleteZoneContext";
 import { useProject } from "~/components/contexts/ProjectContext";
 import Xarrow from "react-xarrows";
+import { createTask } from "~/types/Task"; // 导入createTask函数
 
 // 任务依赖连线预览
 interface DependencyLine {
@@ -26,15 +27,23 @@ const TaskArea: FC = () => {
     removeTaskDependency,
     getTaskDependencies,
     hasCircularDependency,
+    addTask,
+    removeTask,
+    getNextId,
+    getNextTypeCounter,
+    project
   } = useProject();
-  const [tasks, setTasks] = useState<
-    Array<{
-      id: string;
-      position: { x: number; y: number };
-      name: string;
-      size?: { width: number; height: number };
-    }>
-  >([]);
+  
+  // 增强版任务类型，保存完整任务信息
+  interface EnhancedTask {
+    id: string;  // UI 中显示的 ID
+    numericId: number; // 实际存储的数字 ID
+    position: { x: number; y: number };
+    name: string;
+    size?: { width: number; height: number };
+  }
+  
+  const [tasks, setTasks] = useState<EnhancedTask[]>([]);
   const containerRef = useRef<HTMLDivElement>(null);
   // 添加网格显示状态
   const [showGrid, setShowGrid] = useState(false);
@@ -87,6 +96,46 @@ const TaskArea: FC = () => {
     setDependencies(loadedDependencies);
   }, [getTaskDependencies]);
 
+  // 从项目配置中加载任务
+  useEffect(() => {
+    if (!project) return;
+    
+    // 从项目配置中获取任务
+    const projectTasks = project.config.tasks || [];
+    
+    // 保留映射，用于跟踪任务ID与位置的关系
+    const taskPositionMap = new Map<number, { x: number; y: number }>();
+    const taskSizeMap = new Map<number, { width: number; height: number }>();
+    
+    // 记录现有任务的位置和大小
+    tasks.forEach(task => {
+      taskPositionMap.set(task.numericId, task.position);
+      if (task.size) {
+        taskSizeMap.set(task.numericId, task.size);
+      }
+    });
+    
+    // 转换成增强型任务对象
+    const enhancedTasks: EnhancedTask[] = projectTasks.map((task) => {
+      // 检查是否有已保存的位置，如果没有，使用默认位置
+      const position = taskPositionMap.get(task.id) || { x: 100, y: 100 };
+      
+      // 使用已保存的大小或默认大小
+      const size = taskSizeMap.get(task.id) || { width: 120, height: 80 };
+      
+      return {
+        id: `task-${task.id}`,
+        numericId: task.id,
+        position,
+        name: task.name,
+        size,
+      };
+    });
+
+    setTasks(enhancedTasks);
+    
+  }, [project?.config.tasks]); // 只在任务列表真正变化时才重新加载
+
   // 计算拖拽依赖过程中所有可能导致循环依赖的任务
   const calculateCircularDependencyTasks = useCallback(
     (fromTaskId: string | null) => {
@@ -117,9 +166,17 @@ const TaskArea: FC = () => {
         containerRef.current
       ) {
         const containerRect = containerRef.current.getBoundingClientRect();
-        setMousePosition({
+        const newPosition = {
           x: e.clientX - containerRect.left,
           y: e.clientY - containerRect.top,
+        };
+        
+        // 只有当位置真正改变时才更新状态，避免不必要的重新渲染
+        setMousePosition(prevPos => {
+          if (prevPos.x !== newPosition.x || prevPos.y !== newPosition.y) {
+            return newPosition;
+          }
+          return prevPos;
         });
       }
     };
@@ -230,15 +287,32 @@ const TaskArea: FC = () => {
           });
 
           // 任务位置更新完成后，在下一个渲染周期重置偏移量
-          // 这样可以避免任务回到原位置造成闪烁
           requestAnimationFrame(() => {
             setDragOffset({ x: 0, y: 0 });
             // 隐藏网格并重置鼠标样式
             setShowGrid(false);
             if (container) container.style.cursor = "grab";
 
-            // 强制重新渲染箭头
-            setArrowUpdateCounter((prev) => prev + 1);
+            // 使用更可靠的方式强制更新箭头位置
+            setTimeout(() => {
+              // 获取所有箭头元素
+              const arrowElements = document.querySelectorAll('[id^="xarrow-"]');
+              
+              // 触发重新布局
+              arrowElements.forEach(arrow => {
+                if (arrow instanceof HTMLElement) {
+                  // 先隐藏再显示，强制浏览器重新计算位置
+                  const currentDisplay = arrow.style.display;
+                  arrow.style.display = "none";
+                  // 强制浏览器重排
+                  arrow.offsetHeight;
+                  arrow.style.display = currentDisplay;
+                }
+              });
+              
+              // 增加计数器触发额外的更新机制
+              setArrowUpdateCounter(prev => prev + 1);
+            }, 0);
           });
 
           return updatedTasks;
@@ -287,7 +361,7 @@ const TaskArea: FC = () => {
     }
   }, [tasks, dragOffset]);
 
-  const handleDoubleClick = (e: React.MouseEvent<HTMLDivElement>) => {
+  const handleDoubleClick = async (e: React.MouseEvent<HTMLDivElement>) => {
     // 计算点击位置相对于容器的坐标
     const container = e.currentTarget;
     const rect = container.getBoundingClientRect();
@@ -296,30 +370,50 @@ const TaskArea: FC = () => {
 
     // 如果点击的是容器而不是任务
     if ((e.target as HTMLElement).classList.contains("task-area-container")) {
+      // 定义任务的默认尺寸（与其他地方保持一致）
+      const defaultWidth = 120;
+      const defaultHeight = 80;
+      
+      // 计算任务左上角位置，使点击位置成为任务的中心
       // 将位置调整为最近的20px网格
-      const snapX = Math.round(x / 20) * 20;
-      const snapY = Math.round(y / 20) * 20;
+      const snapX = Math.round((x - defaultWidth/2) / 20) * 20;
+      const snapY = Math.round((y - defaultHeight/2) / 20) * 20;
 
-      const taskId = `task-${Date.now()}`;
+      // 获取新的任务ID，使用taskCounter而不是nextId
+      const numericId = getNextTypeCounter("task");
+      // 为了保持一致性，任务ID使用字符串格式
+      const taskId = `task-${numericId}`;
 
-      // 创建新任务
-      const newTask = {
-        id: taskId,
-        position: { x: snapX, y: snapY },
-        name: "任务容器",
-      };
+      // 创建新任务配置
+      const taskConfig = createTask(numericId);
+      
+      try {
+        // 将任务添加到项目配置文件
+        await addTask(taskConfig);
+        
+        // 创建新任务UI元素
+        const newTask: EnhancedTask = {
+          id: taskId,
+          numericId: numericId,
+          position: { x: snapX, y: snapY },
+          name: taskConfig.name,
+          size: { width: defaultWidth, height: defaultHeight }
+        };
 
-      setTasks((prevTasks) => [...prevTasks, newTask]);
+        setTasks((prevTasks) => [...prevTasks, newTask]);
 
-      // 添加一个延迟标志，防止任务进入无法拖拽状态
-      (window as any).__newTaskCreated = taskId;
+        // 添加一个延迟标志，防止任务进入无法拖拽状态
+        (window as any).__newTaskCreated = taskId;
 
-      // 一段时间后移除标志
-      setTimeout(() => {
-        if ((window as any).__newTaskCreated === taskId) {
-          (window as any).__newTaskCreated = null;
-        }
-      }, 500);
+        // 一段时间后移除标志
+        setTimeout(() => {
+          if ((window as any).__newTaskCreated === taskId) {
+            (window as any).__newTaskCreated = null;
+          }
+        }, 500);
+      } catch (error) {
+        console.error("创建新任务失败:", error);
+      }
     }
   };
 
@@ -338,10 +432,27 @@ const TaskArea: FC = () => {
     );
   };
 
-  const handleTaskNameChange = (id: string, name: string) => {
-    setTasks((prevTasks) =>
-      prevTasks.map((task) => (task.id === id ? { ...task, name } : task))
-    );
+  const handleTaskNameChange = async (id: string, name: string) => {
+    try {
+      // 查找任务以获取数字ID
+      const task = tasks.find(task => task.id === id);
+      if (!task) {
+        console.error("找不到要重命名的任务:", id);
+        return;
+      }
+      
+      // 更新本地状态
+      setTasks(prevTasks =>
+        prevTasks.map(task => (task.id === id ? { ...task, name } : task))
+      );
+      
+      // 创建更新后的任务配置并保存到项目
+      const updatedTask = createTask(task.numericId);
+      updatedTask.name = name;
+      await addTask(updatedTask); // 使用addTask更新现有任务
+    } catch (error) {
+      console.error("更新任务名称失败:", error);
+    }
   };
 
   const handleTaskSizeChange = (
@@ -362,13 +473,28 @@ const TaskArea: FC = () => {
   };
 
   // 处理任务删除功能
-  const handleTaskDelete = (id: string) => {
-    setTasks((prevTasks) => prevTasks.filter((task) => task.id !== id));
+  const handleTaskDelete = async (id: string) => {
+    try {
+      // 查找要删除的任务，获取其数字ID
+      const taskToDelete = tasks.find(task => task.id === id);
+      if (!taskToDelete) {
+        console.error("找不到要删除的任务:", id);
+        return;
+      }
+      
+      // 从项目配置中删除任务
+      await removeTask(taskToDelete.numericId);
+      
+      // 更新UI状态
+      setTasks((prevTasks) => prevTasks.filter((task) => task.id !== id));
 
-    // 删除与此任务相关的所有依赖关系
-    setDependencies((prevDeps) =>
-      prevDeps.filter(([from, to]) => from !== id && to !== id)
-    );
+      // 删除与此任务相关的所有依赖关系
+      setDependencies((prevDeps) =>
+        prevDeps.filter(([from, to]) => from !== id && to !== id)
+      );
+    } catch (error) {
+      console.error("删除任务失败:", error);
+    }
   };
 
   // 显示/隐藏网格的回调函数
@@ -381,16 +507,21 @@ const TaskArea: FC = () => {
   };
 
   // 处理依赖关系的创建
-  const handleDependencyStart = (fromTaskId: string) => {
+  const handleDependencyStart = (fromTaskId: string, anchorPoint?: string, initialPosition?: { x: number; y: number }) => {
     // 只有在容器引用可用时才继续
     if (!containerRef.current) {
       return;
     }
 
+    // 如果有提供初始位置，立即更新鼠标位置，避免箭头闪烁
+    if (initialPosition) {
+      setMousePosition(initialPosition);
+    }
+
     // 设置起点任务，确保存储 fromId
     setDependencyPreview({
-      fromId: fromTaskId, // 确保正确设置源任务ID
-      toPosition: mousePosition,
+      fromId: fromTaskId,
+      toPosition: mousePosition, // 此时如果有初始位置传入，应该已被更新
       active: true,
     });
 
@@ -418,7 +549,6 @@ const TaskArea: FC = () => {
     setMousePosition({ x, y });
   };
 
-  // 处理依赖关系的完成
   const handleDependencyEnd = async (toTaskId: string | null) => {
     // 获取ref中存储的当前拖拽任务ID
     const fromId = dependencyDragRef.current.fromId;
@@ -471,23 +601,6 @@ const TaskArea: FC = () => {
     }
   };
 
-  // 处理依赖关系的删除（双击依赖箭头）
-  const handleDependencyClick = async (
-    fromId: string,
-    toId: string,
-    e: React.MouseEvent
-  ) => {
-    // 检测双击
-    if (e.detail === 2) {
-      await removeTaskDependency(fromId, toId);
-
-      // 更新本地状态
-      setDependencies((prevDeps) =>
-        prevDeps.filter(([from, to]) => !(from === fromId && to === toId))
-      );
-    }
-  };
-
   return (
     <div className="task-area">
       <div className="task-area-header">
@@ -521,10 +634,6 @@ const TaskArea: FC = () => {
               dashness={false}
               headShape="arrow1"
               headSize={4}
-              passProps={{
-                onClick: (e: React.MouseEvent) =>
-                  handleDependencyClick(fromId, toId, e),
-              }}
             />
           ))}
 

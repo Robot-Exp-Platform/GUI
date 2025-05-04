@@ -144,7 +144,17 @@ export class Project {
 
   // 添加任务
   async addTask(task: Task): Promise<void> {
-    this.config.tasks.push(task);
+    // 检查是否已存在相同 ID 的任务，如果存在则更新而不是添加
+    const existingTaskIndex = this.config.tasks.findIndex(existingTask => existingTask.id === task.id);
+    
+    if (existingTaskIndex >= 0) {
+      // 更新现有任务
+      this.config.tasks[existingTaskIndex] = task;
+    } else {
+      // 添加新任务
+      this.config.tasks.push(task);
+    }
+    
     // 自动保存
     await this.save();
   }

@@ -122,7 +122,18 @@ app.whenReady().then(() => {
         const configData = {
           projectName: projectName,
           createdAt: new Date().toISOString(),
-          nextId: 1, // 初始化ID计数器
+          robots: [],
+          sensors: [],
+          tasks: [],
+          idCounters: {
+            nextId: 1,
+            pandaCounter: 0,
+            urCounter: 0,
+            sensorACounter: 0, 
+            sensorBCounter: 0,
+            taskCounter: 0
+          },
+          task_graph: []
         };
 
         fs.writeFileSync(configPath, JSON.stringify(configData, null, 2));
