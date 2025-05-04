@@ -25,7 +25,7 @@ function createWindow() {
   // Menu.setApplicationMenu(null);
 
   if (app.isPackaged) {
-    win.loadFile("./gui/build/index.html");
+    win.loadFile("./gui/dist/index.html");
   } else {
     win.loadURL("http://localhost:5173");
   }
