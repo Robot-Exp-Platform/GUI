@@ -169,6 +169,12 @@ export const ProjectProvider: React.FC<{ children: ReactNode }> = ({
     async (fromTaskId: string, toTaskId: string) => {
       if (!project) return;
 
+      // 先检查是否会形成循环依赖
+      if (project.hasCircularDependency(fromTaskId, toTaskId)) {
+        // 如果会形成循环依赖，抛出错误
+        throw new Error(`添加依赖关系 ${fromTaskId} -> ${toTaskId} 会导致循环依赖`);
+      }
+
       await project.addTaskDependency(fromTaskId, toTaskId);
       updateProject();
     },

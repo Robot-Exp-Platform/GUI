@@ -1,4 +1,11 @@
-import React, { FC, useState, useRef, useContext, useEffect } from "react";
+import React, {
+  FC,
+  useState,
+  useRef,
+  useContext,
+  useEffect,
+  useCallback,
+} from "react";
 import "./styles.css";
 import Task from "../../components/Task";
 import { conv_ref } from "~/utils";
@@ -53,6 +60,11 @@ const TaskArea: FC = () => {
     string | null
   >(null);
 
+  // 存储可能导致循环依赖的任务ID列表
+  const [circularDependencyTasks, setCircularDependencyTasks] = useState<
+    string[]
+  >([]);
+
   // 拖动状态
   const dragState = useRef({
     isDragging: false,
@@ -74,6 +86,27 @@ const TaskArea: FC = () => {
     const loadedDependencies = getTaskDependencies();
     setDependencies(loadedDependencies);
   }, [getTaskDependencies]);
+
+  // 计算拖拽依赖过程中所有可能导致循环依赖的任务
+  const calculateCircularDependencyTasks = useCallback(
+    (fromTaskId: string | null) => {
+      if (!fromTaskId) {
+        setCircularDependencyTasks([]);
+        return;
+      }
+
+      // 获取所有可能导致循环依赖的目标任务ID
+      const circularTasks = tasks
+        .map((task) => task.id)
+        .filter(
+          (taskId) =>
+            taskId !== fromTaskId && hasCircularDependency(fromTaskId, taskId)
+        );
+
+      setCircularDependencyTasks(circularTasks);
+    },
+    [tasks, hasCircularDependency]
+  );
 
   // 全局鼠标移动追踪，用于箭头绘制
   useEffect(() => {
@@ -105,6 +138,8 @@ const TaskArea: FC = () => {
         setDependencyPreview(null);
         dependencyDragRef.current.isDragging = false;
         dependencyDragRef.current.fromId = null;
+        // 清除循环依赖任务标记
+        setCircularDependencyTasks([]);
       }
     };
 
@@ -229,6 +264,15 @@ const TaskArea: FC = () => {
       window.removeEventListener("mouseup", handleMouseUp);
     };
   }, [tasks]);
+
+  // 当拖拽锚点开始时，计算并标记所有可能导致循环依赖的任务
+  useEffect(() => {
+    if (dependencyPreview?.active) {
+      calculateCircularDependencyTasks(dependencyPreview.fromId);
+    } else {
+      setCircularDependencyTasks([]);
+    }
+  }, [dependencyPreview, calculateCircularDependencyTasks]);
 
   // 监听任务位置变化，强制更新箭头
   useEffect(() => {
@@ -356,6 +400,9 @@ const TaskArea: FC = () => {
 
     // 清除可能的循环依赖警告
     setCircularDependencyWarning(null);
+
+    // 计算可能导致循环依赖的任务
+    calculateCircularDependencyTasks(fromTaskId);
   };
 
   // 处理依赖关系拖动
@@ -383,6 +430,9 @@ const TaskArea: FC = () => {
     // 然后清除预览状态
     setDependencyPreview(null);
 
+    // 清除循环依赖任务标记
+    setCircularDependencyTasks([]);
+
     // 如果没有源任务ID或目标任务ID，直接返回
     if (!fromId || !toTaskId) {
       return;
@@ -394,20 +444,16 @@ const TaskArea: FC = () => {
     }
 
     // 检查是否会产生循环依赖
-    try {
-      if (hasCircularDependency(fromId, toTaskId)) {
-        // 显示警告，但不添加依赖
-        setCircularDependencyWarning(
-          `无法添加依赖关系: 任务 ${toTaskId} 已经依赖于 ${fromId}，添加会导致循环依赖`
-        );
-        setTimeout(() => setCircularDependencyWarning(null), 3000);
-        return;
-      }
+    if (circularDependencyTasks.includes(toTaskId)) {
+      // 如果目标任务会导致循环依赖，不执行任何操作
+      return;
+    }
 
-      // 添加新的依赖关系
+    try {
+      // 尝试添加新的依赖关系
       await addTaskDependency(fromId, toTaskId);
 
-      // 更新本地状态
+      // 只有在成功添加后才更新本地状态
       setDependencies((prevDeps) => {
         // 检查是否已存在相同的依赖关系
         const exists = prevDeps.some(
@@ -419,7 +465,9 @@ const TaskArea: FC = () => {
         return prevDeps;
       });
     } catch (error) {
+      // 如果发生错误（包括循环依赖错误），记录到控制台但不更新状态
       console.error("TaskArea: 添加依赖关系时出错:", error);
+      // 这里不显示任何错误信息给用户，因为我们已经通过视觉反馈提示了不可连接
     }
   };
 
@@ -535,6 +583,10 @@ const TaskArea: FC = () => {
             onDependencyStart={handleDependencyStart}
             onDependencyDrag={handleDependencyDrag}
             onDependencyEnd={handleDependencyEnd}
+            isCircularDependency={
+              dependencyPreview?.active &&
+              circularDependencyTasks.includes(task.id)
+            }
           />
         ))}
       </div>

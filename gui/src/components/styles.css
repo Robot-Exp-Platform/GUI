@@ -74,3 +74,26 @@
   box-shadow: 0 2px 3px rgba(0, 0, 0, 0.3);
   z-index: 20;
 }
+
+/* 循环依赖的任务样式 */
+.task.circular-dependency {
+  border: 2px dashed #ff3333;
+  box-shadow: 0 0 8px rgba(255, 0, 0, 0.4);
+  background-color: rgba(255, 200, 200, 0.5);
+}
+
+.circular-dependency-marker {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  background-color: rgba(255, 0, 0, 0.7);
+  color: white;
+  font-size: 11px;
+  padding: 2px 4px;
+  text-align: center;
+  font-weight: bold;
+  border-bottom: 1px solid rgba(255, 0, 0, 0.9);
+  border-top-left-radius: 2px;
+  border-top-right-radius: 2px;
+}

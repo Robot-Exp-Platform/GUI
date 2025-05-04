@@ -23,6 +23,7 @@ interface TaskProps {
   onDependencyStart?: (taskId: string, anchorPoint: string) => void;
   onDependencyDrag?: (e: MouseEvent) => void;
   onDependencyEnd?: (targetTaskId: string | null) => void;
+  isCircularDependency?: boolean; // 添加是否会导致循环依赖的属性
 }
 
 const Task: React.FC<TaskProps> = ({
@@ -46,6 +47,7 @@ const Task: React.FC<TaskProps> = ({
   onDependencyStart,
   onDependencyDrag,
   onDependencyEnd,
+  isCircularDependency = false, // 默认不会导致循环依赖
 }) => {
   const alignToGrid = (value: number) =>
     Math.round(value / gridSize) * gridSize;
@@ -331,7 +333,7 @@ const Task: React.FC<TaskProps> = ({
         if (node) taskRef.current = node;
       }}
       data-task-id={id}
-      className={`task ${isDragging ? "dragging" : ""}`}
+      className={`task ${isDragging ? "dragging" : ""} ${isCircularDependency ? "circular-dependency" : ""}`}
       style={{
         left: position.x + (dragOffset?.x || 0),
         top: position.y + (dragOffset?.y || 0),
@@ -371,6 +373,12 @@ const Task: React.FC<TaskProps> = ({
           className="task-anchor"
           onMouseDown={handleAnchorMouseDown}
         />
+
+        {isCircularDependency && (
+          <div className="circular-dependency-marker">
+            循环依赖
+          </div>
+        )}
       </div>
     </div>
   );
