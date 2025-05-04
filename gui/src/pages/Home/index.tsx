@@ -171,7 +171,9 @@ export const Page: FC<HomeProps> = ({ onNavigate }) => {
               label="项目名称"
               placeholder="输入项目名称"
               value={projectName}
-              onChange={(e) => setProjectName(e.target.value)}
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                setProjectName(e.target.value)
+              }
               required
             />
             <Form.Group>

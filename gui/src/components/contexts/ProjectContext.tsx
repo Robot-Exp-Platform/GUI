@@ -72,19 +72,14 @@ export const ProjectProvider: React.FC<{ children: ReactNode }> = ({
     return await project.save();
   }, [project]);
 
-  // 更新组件状态以触发重新渲染
+  // 更新组件状态以触发重新渲染，但确保返回 Project 实例
   const updateProject = useCallback(() => {
     setProject((prev) => {
       if (!prev) return null;
-
-      // 创建一个新的 Project 实例，保留原来的所有属性
-      return new Project(prev.projectName, prev.projectPath, {
-        robots: [...prev.config.robots],
-        sensors: [...prev.config.sensors],
-        tasks: [...prev.config.tasks],
-        idCounters: { ...prev.config.idCounters },
-        task_graph: [...prev.config.task_graph],
-      });
+      
+      // 返回原始 Project 实例，不创建新的实例
+      // 这样只是触发状态更新，而不会丢失 Project 类的方法
+      return prev;
     });
   }, []);
 

@@ -20,7 +20,11 @@ interface TaskProps {
   onResizeStart?: () => void;
   onResizeEnd?: () => void;
   dragOffset?: { x: number; y: number };
-  onDependencyStart?: (taskId: string, anchorPoint: string, initialMousePosition?: { x: number; y: number }) => void;
+  onDependencyStart?: (
+    taskId: string,
+    anchorPoint: string,
+    initialMousePosition?: { x: number; y: number }
+  ) => void;
   onDependencyDrag?: (e: MouseEvent) => void;
   onDependencyEnd?: (targetTaskId: string | null) => void;
   isCircularDependency?: boolean; // 添加是否会导致循环依赖的属性
@@ -205,9 +209,9 @@ const Task: React.FC<TaskProps> = ({
       const containerRect = containerRef.current.getBoundingClientRect();
       initialMousePosition = {
         x: e.clientX - containerRect.left,
-        y: e.clientY - containerRect.top
+        y: e.clientY - containerRect.top,
       };
-      
+
       // 通知父组件开始创建依赖，并传递初始鼠标位置
       onDependencyStart?.(id, "bottom", initialMousePosition);
     } else {
@@ -334,7 +338,9 @@ const Task: React.FC<TaskProps> = ({
         if (node) taskRef.current = node;
       }}
       data-task-id={id}
-      className={`task ${isDragging ? "dragging" : ""} ${isCircularDependency ? "circular-dependency" : ""}`}
+      className={`task ${isDragging ? "dragging" : ""} ${
+        isCircularDependency ? "circular-dependency" : ""
+      }`}
       style={{
         left: position.x + (dragOffset?.x || 0),
         top: position.y + (dragOffset?.y || 0),
@@ -361,7 +367,7 @@ const Task: React.FC<TaskProps> = ({
 
         <div
           className="task-resize-handle"
-          onMouseDown={(e) => {
+          onMouseDown={(e: React.MouseEvent<HTMLDivElement>) => {
             e.stopPropagation();
             handleResizeStart(e);
           }}
@@ -376,9 +382,7 @@ const Task: React.FC<TaskProps> = ({
         />
 
         {isCircularDependency && (
-          <div className="circular-dependency-marker">
-            循环依赖
-          </div>
+          <div className="circular-dependency-marker">循环依赖</div>
         )}
       </div>
     </div>

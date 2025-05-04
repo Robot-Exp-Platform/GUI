@@ -74,8 +74,9 @@ const ConfigArea: FC = () => {
             robot.name = `panda_${pandaCounter}`;
           }
 
+          // 只调用 addRobot，不再直接更新本地状态
+          // 依靠 useEffect 钩子在 project 更新后自动更新本地状态
           await addRobot(robot);
-          setRobots((prev) => [...prev, robot]);
         } else {
           // 根据名称确定传感器类型
           let sensor: Sensor;
@@ -89,9 +90,12 @@ const ConfigArea: FC = () => {
             sensor.name = `sensor_b_${sensorCounter}`;
           }
 
+          // 只调用 addSensor，不再直接更新本地状态
           await addSensor(sensor);
-          setSensors((prev) => [...prev, sensor]);
         }
+
+        // 更新 project 状态，触发 useEffect 钩子重新获取数据
+        updateProject();
 
         // 更新nextId显示
         setNextId((prev) => prev + 1);
@@ -108,8 +112,7 @@ const ConfigArea: FC = () => {
       addRobot,
       addSensor,
       isAdding,
-      robots,
-      sensors,
+      updateProject,
     ]
   );
 

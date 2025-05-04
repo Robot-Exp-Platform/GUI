@@ -1,0 +1,415 @@
+import React, { useState, useEffect } from "react";
+import { 
+  Modal, 
+  Form, 
+  Button, 
+  Message, 
+  Segment, 
+  Header, 
+  Label, 
+  TextArea, 
+  Grid,
+  Divider
+} from "semantic-ui-react";
+import { Robot, RobotType } from "~/types/Robot";
+import { useProject } from "~/components/contexts/ProjectContext";
+import { formatJsonCompact } from "~/utils";
+import './styles.css';
+
+interface RobotEditorProps {
+  robot: Robot;
+  open: boolean;
+  onClose: () => void;
+  onSave: (updatedRobot: Robot) => Promise<boolean>;
+  checkDuplicateName: (name: string, currentId: number) => boolean;
+}
+
+const RobotEditor: React.FC<RobotEditorProps> = ({
+  robot,
+  open,
+  onClose,
+  onSave,
+  checkDuplicateName,
+}) => {
+  // 编辑模式状态
+  const [isJsonMode, setIsJsonMode] = useState<boolean>(false);
+  
+  // 表单编辑模式的状态
+  const [name, setName] = useState<string>(robot.name);
+  const [robotType, setRobotType] = useState<RobotType>(robot.robot_type);
+  const [rotation, setRotation] = useState<[number, number, number, number]>(
+    robot.base_pose?.rotation || [1, 0, 0, 0]
+  );
+  const [translation, setTranslation] = useState<[number, number, number]>(
+    robot.base_pose?.translation || [0, 0, 0]
+  );
+
+  // 焦点状态
+  const [focusedField, setFocusedField] = useState<string | null>(null);
+
+  // JSON编辑模式的状态
+  const [jsonText, setJsonText] = useState<string>("");
+  const [isSaving, setIsSaving] = useState<boolean>(false);
+  const [error, setError] = useState<string | null>(null);
+  const [saveSuccess, setSaveSuccess] = useState<boolean>(false);
+  const [nameError, setNameError] = useState<string | null>(null);
+
+  // 当robot属性变化时更新表单状态
+  useEffect(() => {
+    resetFormToOriginal();
+  }, [robot, open]);
+  
+  // 重置表单为原始状态
+  const resetFormToOriginal = () => {
+    setName(robot.name);
+    setRobotType(robot.robot_type);
+    setRotation(robot.base_pose?.rotation || [1, 0, 0, 0]);
+    setTranslation(robot.base_pose?.translation || [0, 0, 0]);
+    setNameError(null);
+    
+    // 更新JSON文本
+    const jsonObj = {
+      name: robot.name,
+      robot_type: robot.robot_type,
+      base_pose: {
+        rotation: robot.base_pose?.rotation || [1, 0, 0, 0],
+        translation: robot.base_pose?.translation || [0, 0, 0],
+      },
+    };
+    setJsonText(formatJsonCompact(jsonObj));
+  };
+
+  // 验证名称
+  const validateName = (value: string) => {
+    if (!value.trim()) {
+      setNameError("名称不能为空");
+      return false;
+    } else if (checkDuplicateName(value, robot.id)) {
+      setNameError("名称已被使用，请使用不同的名称");
+      return false;
+    } else {
+      setNameError(null);
+      return true;
+    }
+  };
+
+  // 保存机器人配置
+  const handleSave = async () => {
+    setIsSaving(true);
+    setError(null);
+    setSaveSuccess(false);
+
+    try {
+      let updatedRobot: Robot;
+
+      if (isJsonMode) {
+        // JSON模式下的保存
+        try {
+          const parsedJson = JSON.parse(jsonText);
+
+          // 验证JSON结构
+          if (!parsedJson.name || typeof parsedJson.name !== "string") {
+            throw new Error("名称必须是一个有效的字符串");
+          }
+
+          if (!parsedJson.robot_type || 
+              (parsedJson.robot_type !== "panda" && parsedJson.robot_type !== "ur")) {
+            throw new Error("机器人类型必须是 'panda' 或 'ur'");
+          }
+
+          if (!parsedJson.base_pose) {
+            throw new Error("base_pose 是必需的");
+          }
+
+          if (!Array.isArray(parsedJson.base_pose.rotation) || 
+              parsedJson.base_pose.rotation.length !== 4 ||
+              !parsedJson.base_pose.rotation.every((val: unknown) => typeof val === 'number')) {
+            throw new Error("rotation 必须是含有4个数字的数组");
+          }
+
+          if (!Array.isArray(parsedJson.base_pose.translation) || 
+              parsedJson.base_pose.translation.length !== 3 ||
+              !parsedJson.base_pose.translation.every((val: unknown) => typeof val === 'number')) {
+            throw new Error("translation 必须是含有3个数字的数组");
+          }
+
+          // 检查名称是否重复
+          if (checkDuplicateName(parsedJson.name, robot.id)) {
+            throw new Error("名称已被使用，请使用不同的名称");
+          }
+
+          updatedRobot = {
+            ...robot,
+            name: parsedJson.name,
+            robot_type: parsedJson.robot_type as RobotType,
+            base_pose: {
+              rotation: parsedJson.base_pose.rotation as [number, number, number, number],
+              translation: parsedJson.base_pose.translation as [number, number, number],
+            }
+          };
+        } catch (err) {
+          if (err instanceof Error) {
+            setError(`JSON 解析错误: ${err.message}`);
+          } else {
+            setError("无效的 JSON 格式");
+          }
+          setIsSaving(false);
+          return;
+        }
+      } else {
+        // 表单模式下的保存
+        
+        // 验证表单
+        if (!validateName(name)) {
+          setIsSaving(false);
+          return;
+        }
+
+        // 创建更新后的机器人对象
+        updatedRobot = {
+          ...robot,
+          name,
+          robot_type: robotType,
+          base_pose: {
+            rotation,
+            translation,
+          }
+        };
+      }
+
+      // 保存机器人配置
+      const success = await onSave(updatedRobot);
+      
+      if (success) {
+        setSaveSuccess(true);
+        
+        // 更新当前 robot 对象的引用，这样切换模式时会使用新的值
+        robot.name = updatedRobot.name;
+        robot.robot_type = updatedRobot.robot_type;
+        robot.base_pose = updatedRobot.base_pose;
+        
+        // 更新表单状态
+        setName(updatedRobot.name);
+        setRobotType(updatedRobot.robot_type);
+        setRotation(updatedRobot.base_pose.rotation);
+        setTranslation(updatedRobot.base_pose.translation);
+        
+        // 更新JSON文本
+        const jsonObj = {
+          name: updatedRobot.name,
+          robot_type: updatedRobot.robot_type,
+          base_pose: {
+            rotation: updatedRobot.base_pose.rotation,
+            translation: updatedRobot.base_pose.translation,
+          },
+        };
+        setJsonText(formatJsonCompact(jsonObj));
+      } else {
+        setError("保存失败，请重试");
+      }
+    } catch (err) {
+      if (err instanceof Error) {
+        setError(`保存错误: ${err.message}`);
+      } else {
+        setError("保存过程中发生未知错误");
+      }
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  // 切换编辑模式
+  const toggleEditMode = () => {
+    if (isJsonMode) {
+      // 从JSON模式切换到表单模式，放弃未保存的JSON编辑
+      setIsJsonMode(false);
+      resetFormToOriginal();
+    } else {
+      // 从表单模式切换到JSON模式，放弃未保存的表单编辑
+      const jsonObj = {
+        name: robot.name,
+        robot_type: robot.robot_type,
+        base_pose: {
+          rotation: robot.base_pose.rotation,
+          translation: robot.base_pose.translation,
+        },
+      };
+      setJsonText(formatJsonCompact(jsonObj));
+      setIsJsonMode(true);
+    }
+    // 清除之前的错误信息
+    setError(null);
+    setNameError(null);
+    setSaveSuccess(false);
+  };
+
+  // 处理旋转值的更改
+  const handleRotationChange = (index: number, value: string) => {
+    const newValue = parseFloat(value) || 0;
+    const newRotation = [...rotation] as [number, number, number, number];
+    newRotation[index] = newValue;
+    setRotation(newRotation);
+  };
+
+  // 处理平移值的更改
+  const handleTranslationChange = (index: number, value: string) => {
+    const newValue = parseFloat(value) || 0;
+    const newTranslation = [...translation] as [number, number, number];
+    newTranslation[index] = newValue;
+    setTranslation(newTranslation);
+  };
+
+  // 处理键盘快捷键
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    // 检测 Ctrl+S 组合键
+    if (e.ctrlKey && e.key === 's') {
+      e.preventDefault(); // 阻止浏览器默认的保存页面行为
+      handleSave();
+    }
+  };
+
+  return (
+    <Modal open={open} onClose={onClose} size="small">
+      <Modal.Header>
+        编辑机器人配置
+        <Button
+          floated="right"
+          content={isJsonMode ? "切换到表单编辑模式" : "切换到JSON编辑模式"}
+          size="tiny"
+          onClick={toggleEditMode}
+        />
+      </Modal.Header>
+      <Modal.Content>
+        <Segment>
+          {isJsonMode ? (
+            <Form>
+              <TextArea
+                placeholder="输入JSON配置"
+                value={jsonText}
+                onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setJsonText(e.target.value)}
+                className={`editor-json-textarea ${focusedField === "jsonText" ? "focus" : ""}`}
+                spellCheck="false"
+                onFocus={() => setFocusedField("jsonText")}
+                onBlur={() => setFocusedField(null)}
+                onKeyDown={handleKeyDown}
+              />
+            </Form>
+          ) : (
+            <Form>
+              <Form.Input
+                label="ID"
+                value={robot.id}
+                readOnly
+              />
+              <p className="editor-id-hint">
+                机器人 ID 不能被修改
+              </p>
+              <Form.Field 
+                error={nameError ? { content: nameError, pointing: 'above' } : false}
+              >
+                <label>名称</label>
+                <input 
+                  value={name} 
+                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
+                    setName(e.target.value);
+                    validateName(e.target.value);
+                  }} 
+                  className={`name-input ${focusedField === "name" ? "focus" : ""}`}
+                  onFocus={() => setFocusedField("name")}
+                  onBlur={() => setFocusedField(null)}
+                />
+              </Form.Field>
+              <Form.Field>
+                <label>机器人类型</label>
+                <Form.Select
+                  value={robotType}
+                  options={[
+                    { key: 'panda', text: 'Panda', value: 'panda' },
+                    { key: 'ur', text: 'UR', value: 'ur' },
+                  ]}
+                  onChange={(_, data) => setRobotType(data.value as RobotType)}
+                  className={`robot-type-select ${focusedField === "robotType" ? "focus" : ""}`}
+                  onFocus={() => setFocusedField("robotType")}
+                  onBlur={() => setFocusedField(null)}
+                />
+              </Form.Field>
+
+              <Segment>
+                <Header as="h5">基础姿态 (Base Pose)</Header>
+                <Form.Field>
+                  <label>旋转 (四元数 [w, x, y, z])</label>
+                  <Grid columns={4} divided>
+                    <Grid.Row>
+                      {rotation.map((val, index) => (
+                        <Grid.Column key={index}>
+                          <input
+                            type="number"
+                            value={val}
+                            step="0.01"
+                            onChange={(e: React.ChangeEvent<HTMLInputElement>) => handleRotationChange(index, e.target.value)}
+                            className={`rotation-input ${focusedField === `rotation-${index}` ? "focus" : ""}`}
+                            onFocus={() => setFocusedField(`rotation-${index}`)}
+                            onBlur={() => setFocusedField(null)}
+                          />
+                        </Grid.Column>
+                      ))}
+                    </Grid.Row>
+                  </Grid>
+                </Form.Field>
+                <Form.Field>
+                  <label>平移 (三维向量 [x, y, z])</label>
+                  <Grid columns={3} divided>
+                    <Grid.Row>
+                      {translation.map((val, index) => (
+                        <Grid.Column key={index}>
+                          <input
+                            type="number"
+                            value={val}
+                            step="0.01"
+                            onChange={(e: React.ChangeEvent<HTMLInputElement>) => handleTranslationChange(index, e.target.value)}
+                            className={`translation-input ${focusedField === `translation-${index}` ? "focus" : ""}`}
+                            onFocus={() => setFocusedField(`translation-${index}`)}
+                            onBlur={() => setFocusedField(null)}
+                          />
+                        </Grid.Column>
+                      ))}
+                    </Grid.Row>
+                  </Grid>
+                </Form.Field>
+              </Segment>
+            </Form>
+          )}
+
+          {error && (
+            <Message negative>
+              <Message.Header>错误</Message.Header>
+              <p>{error}</p>
+            </Message>
+          )}
+
+          {saveSuccess && (
+            <Message positive>
+              <Message.Header>保存成功</Message.Header>
+              <p>机器人配置已成功更新</p>
+            </Message>
+          )}
+        </Segment>
+      </Modal.Content>
+      <Modal.Actions>
+        <Button negative onClick={onClose}>
+          退出
+        </Button>
+        <Button
+          positive
+          loading={isSaving}
+          onClick={handleSave}
+          disabled={isSaving}
+        >
+          保存
+        </Button>
+      </Modal.Actions>
+    </Modal>
+  );
+};
+
+export default RobotEditor;
