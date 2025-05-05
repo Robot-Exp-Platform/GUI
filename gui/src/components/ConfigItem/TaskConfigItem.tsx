@@ -42,12 +42,9 @@ const TaskConfigItem: FC<TaskConfigItemProps> = ({
   const getSensorById = (id: number) =>
     project?.config.sensors.find((sensor) => sensor.id === id);
 
+  // 处理右键菜单，打开编辑器
   const handleContextMenu = (e: React.MouseEvent) => {
     e.preventDefault(); // 防止默认右键菜单显示
-  };
-
-  // 打开编辑器
-  const handleDoubleClick = () => {
     setPopupOpen(false); // 关闭弹出信息窗口
     setIsEditorOpen(true); // 打开编辑器
   };
@@ -57,7 +54,7 @@ const TaskConfigItem: FC<TaskConfigItemProps> = ({
     try {
       // 查找现有机器人的索引
       const robotIndex = project?.config.robots.findIndex(
-        (r) => r.id === updatedRobot.id,
+        (r) => r.id === updatedRobot.id
       );
 
       if (robotIndex !== undefined && robotIndex >= 0 && project) {
@@ -83,7 +80,7 @@ const TaskConfigItem: FC<TaskConfigItemProps> = ({
     try {
       // 查找现有传感器的索引
       const sensorIndex = project?.config.sensors.findIndex(
-        (s) => s.id === updatedSensor.id,
+        (s) => s.id === updatedSensor.id
       );
 
       if (sensorIndex !== undefined && sensorIndex >= 0 && project) {
@@ -108,12 +105,12 @@ const TaskConfigItem: FC<TaskConfigItemProps> = ({
   // 检查是否有重名
   const checkDuplicateRobotName = (name: string, currentId: number) =>
     project?.config.robots.some(
-      (robot) => robot.name === name && robot.id !== currentId,
+      (robot) => robot.name === name && robot.id !== currentId
     ) || false;
 
   const checkDuplicateSensorName = (name: string, currentId: number) =>
     project?.config.sensors.some(
-      (sensor) => sensor.name === name && sensor.id !== currentId,
+      (sensor) => sensor.name === name && sensor.id !== currentId
     ) || false;
 
   // 确定图标
@@ -142,7 +139,6 @@ const TaskConfigItem: FC<TaskConfigItemProps> = ({
             color={type === "robot" ? "blue" : "green"}
             style={{ cursor: "context-menu" }}
             onContextMenu={handleContextMenu}
-            onDoubleClick={handleDoubleClick}
             onClick={() => setPopupOpen(true)}
           >
             <Icon name={getIcon()} />

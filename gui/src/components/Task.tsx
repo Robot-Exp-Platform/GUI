@@ -1,6 +1,9 @@
 import React, { useState, useRef, useEffect } from "react";
 import { useDrag } from "react-dnd";
 import "./styles.css";
+import TaskEditor from "./TaskEditor";
+import { useProject } from "~/components/contexts/ProjectContext";
+import { Task as TaskType } from "~/types/Task";
 
 interface TaskProps {
   id: string;
@@ -62,10 +65,12 @@ const Task: React.FC<TaskProps> = ({
     height: alignToGrid(initialSize.height),
   };
 
+  const { project, updateProject } = useProject();
   const [position, setPosition] = useState(alignedInitialPosition);
   const [size, setSize] = useState(alignedInitialSize);
   const [name, setName] = useState(initialName);
   const [isEditing, setIsEditing] = useState(false);
+  const [isEditorOpen, setIsEditorOpen] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const resizeStartPos = useRef({ x: 0, y: 0 });
   const initialSize_ = useRef({ width: 0, height: 0 });
@@ -73,6 +78,10 @@ const Task: React.FC<TaskProps> = ({
   const dragAnchorRef = useRef({
     isDragging: false,
   });
+
+  // 获取当前任务对象
+  const getTaskById = (numericId: number) =>
+    project?.config.tasks.find((task) => task.id === numericId);
 
   const [{ isDragging }, drag] = useDrag({
     type: "TASK",
@@ -127,11 +136,11 @@ const Task: React.FC<TaskProps> = ({
     const deltaHeight = e.clientY - resizeStartPos.current.y;
     const newUnadjustedWidth = Math.max(
       60,
-      initialSize_.current.width + deltaWidth,
+      initialSize_.current.width + deltaWidth
     );
     const newUnadjustedHeight = Math.max(
       40,
-      initialSize_.current.height + deltaHeight,
+      initialSize_.current.height + deltaHeight
     );
     const newWidth = alignToGrid(newUnadjustedWidth);
     const newHeight = alignToGrid(newUnadjustedHeight);
@@ -249,6 +258,70 @@ const Task: React.FC<TaskProps> = ({
     }
   };
 
+  // 处理右键菜单，打开编辑器
+  const handleContextMenu = (e: React.MouseEvent) => {
+    e.preventDefault(); // 防止默认右键菜单显示
+    setIsEditorOpen(true);
+  };
+
+  // 关闭任务编辑器
+  const handleEditorClose = () => {
+    setIsEditorOpen(false);
+  };
+
+  // 保存任务更改
+  const handleSaveTask = async (updatedTask: TaskType) => {
+    try {
+      // 获取任务ID（去除"task-"前缀）
+      const numericId = parseInt(id.replace("task-", ""), 10);
+
+      if (!project) {
+        console.error("项目未加载，无法保存任务");
+        return false;
+      }
+
+      // 查找并更新项目配置中的任务
+      const taskIndex = project.config.tasks.findIndex(
+        (t) => t.id === numericId
+      );
+
+      if (taskIndex !== -1) {
+        // 更新名称和target字段，保留其他属性不变
+        project.config.tasks[taskIndex].name = updatedTask.name;
+        project.config.tasks[taskIndex].target = updatedTask.target;
+
+        // 保存项目
+        await project.save();
+
+        // 更新UI
+        await updateProject();
+
+        // 更新本地状态
+        setName(updatedTask.name);
+
+        // 通知父组件
+        onNameChange?.(id, updatedTask.name);
+
+        return true;
+      }
+
+      console.error("找不到要更新的任务:", numericId);
+      return false;
+    } catch (error) {
+      console.error("保存任务失败:", error);
+      return false;
+    }
+  };
+
+  // 检查任务名称是否重复
+  const checkDuplicateTaskName = (name: string, currentId: number): boolean => {
+    if (!project) return false;
+
+    return project.config.tasks.some(
+      (task) => task.name === name && task.id !== currentId
+    );
+  };
+
   useEffect(() => {
     setPosition({
       x: alignToGrid(initialPosition.x),
@@ -269,7 +342,7 @@ const Task: React.FC<TaskProps> = ({
       document.removeEventListener("mousemove", handleResizeMoveEvent);
       document.removeEventListener("mouseup", handleResizeEndEvent);
     },
-    [],
+    []
   );
 
   useEffect(() => {
@@ -300,6 +373,7 @@ const Task: React.FC<TaskProps> = ({
         width: size.width,
         height: size.height,
       }}
+      onContextMenu={handleContextMenu}
     >
       <div className="task-content">
         {isEditing ? (
@@ -338,6 +412,28 @@ const Task: React.FC<TaskProps> = ({
           <div className="circular-dependency-marker">循环依赖</div>
         )}
       </div>
+
+      {isEditorOpen && (
+        <>
+          {(() => {
+            const numericId = parseInt(id.replace("task-", ""), 10);
+            const taskObj = getTaskById(numericId);
+
+            if (taskObj) {
+              return (
+                <TaskEditor
+                  task={taskObj}
+                  open={isEditorOpen}
+                  onClose={handleEditorClose}
+                  onSave={handleSaveTask}
+                  checkDuplicateName={checkDuplicateTaskName}
+                />
+              );
+            }
+            return null;
+          })()}
+        </>
+      )}
     </div>
   );
 };
