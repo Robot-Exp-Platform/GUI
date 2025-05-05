@@ -47,6 +47,16 @@ interface ElectronAPI {
     success: boolean;
     error?: string;
   }>;
+
+  // 新增：导出配置文件
+  exportConfigFile: (
+    projectPath: string,
+    configData: Record<string, unknown>
+  ) => Promise<{
+    success: boolean;
+    filePath?: string;
+    error?: string;
+  }>;
 }
 
 interface Window {

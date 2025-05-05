@@ -209,6 +209,27 @@ app.whenReady().then(() => {
       }
     }
   );
+
+  // 导出配置文件
+  ipcMain.handle(
+    "export-config-file",
+    async (event, projectPath, configData) => {
+      try {
+        const configFilePath = path.join(projectPath, "config.json");
+        // 写入紧凑格式的JSON文件（没有空格和换行）
+        fs.writeFileSync(configFilePath, JSON.stringify(configData));
+        return { 
+          success: true,
+          filePath: configFilePath
+        };
+      } catch (err) {
+        return {
+          success: false,
+          error: `导出配置失败: ${err.message}`,
+        };
+      }
+    }
+  );
 });
 
 app.on("window-all-closed", () => {

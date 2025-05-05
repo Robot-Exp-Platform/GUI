@@ -92,6 +92,39 @@
   border-bottom: 1px solid #e0e0e0;
   margin-bottom: 10px;
   text-align: left;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.export-container {
+  display: flex;
+  align-items: center;
+}
+
+.export-success-message {
+  color: #21ba45;
+  font-size: 0.85em;
+  margin-right: 10px;
+  text-align: right;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  line-height: 1.2; /* 添加行高属性，减小行间距约一半 */
+}
+
+.export-success-path {
+  max-width: 250px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  direction: rtl; /* 使文本从右向左排列，这样超出部分会在左侧被截断 */
+  text-align: left; /* 与direction: rtl结合使用，确保文本仍然从左向右读 */
+}
+
+.export-config-button {
+  margin-right: 5px !important;
+  font-size: 0.9em !important;
 }
 
 .config-area-header h3 {

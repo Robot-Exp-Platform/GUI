@@ -25,4 +25,8 @@ contextBridge.exposeInMainWorld("electronAPI", {
   // 写入项目配置
   writeProjectConfig: (configPath, configData) =>
     ipcRenderer.invoke("write-project-config", configPath, configData),
+    
+  // 导出配置文件
+  exportConfigFile: (projectPath, configData) =>
+    ipcRenderer.invoke("export-config-file", projectPath, configData),
 });
