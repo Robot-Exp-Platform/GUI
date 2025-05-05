@@ -10,12 +10,12 @@
     "react-dnd-html5-backend": "^16.0.1",
     "react-dom": "^18.2.0",
     "react-xarrows": "^2.0.2",
-    "semantic-ui-css": "^2.5.0",
     "semantic-ui-react": "^2.1.5"
   },
   "scripts": {
     "start": "vite dev",
-    "build": "vite build"
+    "build": "vite build",
+    "preview": "vite preview"
   },
   "browserslist": {
     "production": [
@@ -39,7 +39,6 @@
     "@typescript-eslint/parser": "^8.31.1",
     "eslint": "^9.26.0",
     "eslint-plugin-react": "^7.37.5",
-    "globals": "^16.0.0",
     "typescript": "^5.8.3",
     "vite": "^6.3.4"
   }
