@@ -55,6 +55,7 @@ const SensorEditor: React.FC<SensorEditorProps> = ({
     if (open) {
       // 编辑器重新打开时清除成功保存提示
       setSaveSuccess(false);
+      setError(null);
     }
   }, [open]);
 
@@ -70,6 +71,8 @@ const SensorEditor: React.FC<SensorEditorProps> = ({
     }
     setParamsError(null);
     setNameError(null);
+    setError(null);
+    setSaveSuccess(false);
 
     // 更新JSON文本
     const jsonObj = {
@@ -83,14 +86,11 @@ const SensorEditor: React.FC<SensorEditorProps> = ({
   // 验证名称
   const validateName = (value: string) => {
     if (!value.trim()) {
-      setNameError("名称不能为空");
-      return false;
+      return "名称不能为空";
     } else if (checkDuplicateName(value, sensor.id)) {
-      setNameError("名称已被使用，请使用不同的名称");
-      return false;
+      return "名称已被使用，请使用不同的名称";
     }
-    setNameError(null);
-    return true;
+    return null;
   };
 
   // 验证参数 JSON
@@ -99,35 +99,34 @@ const SensorEditor: React.FC<SensorEditorProps> = ({
   ): Record<string, unknown> | null => {
     try {
       const parsed = JSON.parse(jsonString);
-      setParamsError(null);
       return parsed;
     } catch (_) {
-      setParamsError("无效的 JSON 格式 ");
       return null;
     }
+  };
+
+  // 处理焦点事件，清除成功消息但保留错误信息直到用户修改
+  const handleFieldFocus = (fieldName: string) => {
+    setFocusedField(fieldName);
+    // 只清除成功消息，保留错误信息
+    setSaveSuccess(false);
   };
 
   // 用户输入名称时的处理函数
   const handleNameChange = (value: string) => {
     setName(value);
-    validateName(value);
-    // 清除保存成功的提示
-    setSaveSuccess(false);
+    setNameError(null); // 用户修改名称时清除名称错误
   };
 
   // 用户输入传感器类型时的处理函数
   const handleSensorTypeChange = (value: string) => {
     setSensorType(value);
-    // 清除保存成功的提示
-    setSaveSuccess(false);
   };
 
   // 更新参数输入
   const handleParamsChange = (value: string) => {
     setParams(value);
-    // 清除保存成功的提示
-    setSaveSuccess(false);
-    // 仅在焦点移出时验证，避免用户输入过程中显示错误
+    setParamsError(null); // 用户修改参数时清除参数错误
   };
 
   // 保存传感器配置
@@ -135,6 +134,8 @@ const SensorEditor: React.FC<SensorEditorProps> = ({
     setIsSaving(true);
     setError(null);
     setSaveSuccess(false);
+    setNameError(null);
+    setParamsError(null);
 
     try {
       let updatedSensor: Sensor;
@@ -146,19 +147,25 @@ const SensorEditor: React.FC<SensorEditorProps> = ({
 
           // 验证JSON结构
           if (!parsedJson.name || typeof parsedJson.name !== "string") {
-            throw new Error("名称必须是一个有效的字符串");
+            setError("名称必须是一个有效的字符串");
+            setIsSaving(false);
+            return;
           }
 
           if (
             !parsedJson.sensorType ||
             typeof parsedJson.sensorType !== "string"
           ) {
-            throw new Error("传感器类型必须是有效的字符串");
+            setError("传感器类型必须是有效的字符串");
+            setIsSaving(false);
+            return;
           }
 
           // 检查名称是否重复
           if (checkDuplicateName(parsedJson.name, sensor.id)) {
-            throw new Error("名称已被使用，请使用不同的名称");
+            setError("名称已被使用，请使用不同的名称");
+            setIsSaving(false);
+            return;
           }
 
           updatedSensor = {
@@ -180,14 +187,19 @@ const SensorEditor: React.FC<SensorEditorProps> = ({
         // 表单模式下的保存
 
         // 验证表单
-        if (!validateName(name)) {
+        const nameErrorMsg = validateName(name);
+        if (nameErrorMsg) {
+          setError(nameErrorMsg);
+          setNameError(nameErrorMsg);
           setIsSaving(false);
           return;
         }
 
         // 验证参数 JSON
         const parsedParams = validateParams(params);
-        if (paramsError || parsedParams === null) {
+        if (parsedParams === null) {
+          setError("无效的 JSON 格式");
+          setParamsError("无效的 JSON 格式");
           setIsSaving(false);
           return;
         }
@@ -206,6 +218,10 @@ const SensorEditor: React.FC<SensorEditorProps> = ({
 
       if (success) {
         setSaveSuccess(true);
+        // 清除所有错误状态
+        setError(null);
+        setNameError(null);
+        setParamsError(null);
 
         // 更新表单状态和原始数据
         setName(updatedSensor.name);
@@ -219,6 +235,11 @@ const SensorEditor: React.FC<SensorEditorProps> = ({
           params: updatedSensor.params,
         };
         setJsonText(formatJsonCompact(jsonObj));
+
+        // 更新 sensor 对象的引用
+        sensor.name = updatedSensor.name;
+        sensor.sensorType = updatedSensor.sensorType;
+        sensor.params = updatedSensor.params;
       } else {
         setError("保存失败，请重试");
       }
@@ -290,7 +311,7 @@ const SensorEditor: React.FC<SensorEditorProps> = ({
                   focusedField === "jsonText" ? "focus" : ""
                 }`}
                 spellCheck={false}
-                onFocus={() => setFocusedField("jsonText")}
+                onFocus={() => handleFieldFocus("jsonText")}
                 onBlur={() => setFocusedField(null)}
                 onKeyDown={handleKeyDown}
               />
@@ -310,7 +331,7 @@ const SensorEditor: React.FC<SensorEditorProps> = ({
                   onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
                     handleNameChange(e.target.value)
                   }
-                  onFocus={() => setFocusedField("name")}
+                  onFocus={() => handleFieldFocus("name")}
                   onBlur={() => setFocusedField(null)}
                 />
               </Form.Field>
@@ -321,7 +342,7 @@ const SensorEditor: React.FC<SensorEditorProps> = ({
                   onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
                     handleSensorTypeChange(e.target.value)
                   }
-                  onFocus={() => setFocusedField("sensorType")}
+                  onFocus={() => handleFieldFocus("sensorType")}
                   onBlur={() => setFocusedField(null)}
                   placeholder="输入传感器类型"
                 />
@@ -345,11 +366,8 @@ const SensorEditor: React.FC<SensorEditorProps> = ({
                     focusedField === "params" ? "focus" : ""
                   }`}
                   spellCheck={false}
-                  onFocus={() => setFocusedField("params")}
-                  onBlur={() => {
-                    setFocusedField(null);
-                    validateParams(params);
-                  }}
+                  onFocus={() => handleFieldFocus("params")}
+                  onBlur={() => setFocusedField(null)}
                 />
               </Form.Field>
             </Form>
