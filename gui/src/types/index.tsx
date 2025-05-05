@@ -2,6 +2,7 @@ export * from "./Project";
 export * from "./Robot";
 export * from "./Sensor";
 export * from "./Task";
+export * from "./Node";
 
 /**
  * 项目中使用的计数器类型

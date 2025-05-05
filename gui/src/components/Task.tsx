@@ -286,9 +286,10 @@ const Task: React.FC<TaskProps> = ({
       );
 
       if (taskIndex !== -1) {
-        // 更新名称和target字段，保留其他属性不变
+        // 更新名称、target和nodes字段，保留其他属性不变
         project.config.tasks[taskIndex].name = updatedTask.name;
         project.config.tasks[taskIndex].target = updatedTask.target;
+        project.config.tasks[taskIndex].nodes = updatedTask.nodes;
 
         // 保存项目
         await project.save();
@@ -419,11 +420,12 @@ const Task: React.FC<TaskProps> = ({
             const numericId = parseInt(id.replace("task-", ""), 10);
             const taskObj = getTaskById(numericId);
 
-            if (taskObj) {
+            if (taskObj && project) {
               return (
                 <TaskEditor
                   task={taskObj}
                   open={isEditorOpen}
+                  project={project} // 添加project参数
                   onClose={handleEditorClose}
                   onSave={handleSaveTask}
                   checkDuplicateName={checkDuplicateTaskName}

@@ -62,22 +62,22 @@
 
 .task-anchor {
   position: absolute;
-  bottom: -10px;
+  width: 16px;
+  height: 16px;
+  background-color: #4a8af4;
+  border: 2px solid white;
+  border-radius: 8px;
+  bottom: -8px;
   left: 50%;
   transform: translateX(-50%);
-  width: 12px;
-  height: 12px;
-  background-color: #4a8af4;
-  border-radius: 50%;
-  border: 2px solid white;
   cursor: pointer;
-  box-shadow: 0 2px 3px rgba(0, 0, 0, 0.3);
-  z-index: 20;
+  box-shadow: 0 0 2px rgba(0, 0, 0, 0.5);
+  z-index: 5;
 }
 
 /* 循环依赖的任务样式 */
 .task.circular-dependency {
-  border: 2px dashed #ff3333;
+  border-color: #f44336;
   box-shadow: 0 0 8px rgba(255, 0, 0, 0.4);
   background-color: rgba(255, 200, 200, 0.5);
 }
@@ -85,15 +85,104 @@
 .circular-dependency-marker {
   position: absolute;
   top: 0;
-  left: 0;
   right: 0;
-  background-color: rgba(255, 0, 0, 0.7);
+  background-color: #f44336;
   color: white;
-  font-size: 11px;
+  font-size: 10px;
   padding: 2px 4px;
+  border-radius: 0 0 0 4px;
+}
+
+/* TaskEditor 组件相关样式 */
+.editor-json-textarea-task {
+  min-height: 300px !important;
+  font-family: "Courier New", Courier, monospace;
+}
+
+.target-textarea {
+  min-height: 100px !important;
+  font-family: "Courier New", Courier, monospace;
+}
+
+.node-params-textarea {
+  min-height: 100px !important;
+  font-family: "Courier New", Courier, monospace;
+}
+
+.editor-id-hint {
+  color: #888;
+  font-size: 12px;
+  margin-top: -10px;
+  margin-bottom: 10px;
+}
+
+.nodes-section {
+  margin-top: 20px;
+  padding-top: 15px;
+}
+
+.nodes-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+.nodes-accordion {
+  margin-top: 10px !important;
+}
+
+.nodes-accordion .title button {
+  margin-top: -4px !important;
+  margin-right: -6px !important;
+  margin-bottom: 0 !important;
+}
+
+.no-nodes-message {
+  padding: 15px;
   text-align: center;
-  font-weight: bold;
-  border-bottom: 1px solid rgba(255, 0, 0, 0.9);
-  border-top-left-radius: 2px;
-  border-top-right-radius: 2px;
+  color: #888;
+  font-style: italic;
+}
+
+.tags-container {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 10px;
+  align-items: center;
+}
+
+.tag {
+  display: flex !important;
+  align-items: center;
+}
+
+.error-text {
+  color: #db2828;
+  font-size: 12px;
+  margin-top: 5px;
+}
+
+/* 自定义节点标签样式 */
+.node-tag {
+  display: inline-flex;
+  align-items: center;
+  background-color: #f0f0f0;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  padding: 3px 8px;
+  margin-right: 5px;
+  margin-bottom: 5px;
+  font-size: 12px;
+}
+
+.node-tag .icon {
+  margin-left: 5px;
+  cursor: pointer;
+  color: #888;
+}
+
+.node-tag .icon:hover {
+  color: #db2828;
 }

@@ -7,7 +7,7 @@ import React, {
   useCallback,
 } from "react";
 import "./styles.css";
-import Task from "../../components/Task";
+import Task from "~/components/Task";
 import { convRef } from "~/utils";
 import DeleteZoneContext from "~/components/contexts/DeleteZoneContext";
 import { useProject } from "~/components/contexts/ProjectContext";
