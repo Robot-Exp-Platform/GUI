@@ -1,12 +1,10 @@
-import React, { FC, useState, useRef } from "react";
+import { FC, useState, useRef } from "react";
 import { Icon, Header, Segment } from "semantic-ui-react";
 import { useDrop } from "react-dnd";
 import "./styles.css";
-import { conv_ref } from "~/utils";
+import { convRef } from "~/utils";
 import TaskDraggableItem from "~/components/DraggableItem/TaskDraggableItem";
 import { DeleteZoneContext } from "~/components/contexts/DeleteZoneContext";
-import { RobotType } from "~/types/Robot";
-import { SensorType } from "~/types/Sensor";
 
 const TaskSidebar: FC = () => {
   const [isHovering, setIsHovering] = useState(false);
@@ -17,18 +15,15 @@ const TaskSidebar: FC = () => {
     collect: (monitor) => ({
       isOver: !!monitor.isOver(),
     }),
-    hover: (item: any, monitor) => {
-      if (!deleteZoneRef.current) return;
+    hover: (item, monitor) => {
+      if (!deleteZoneRef.current) {
+        return;
+      }
 
       const deleteZoneRect = deleteZoneRef.current.getBoundingClientRect();
       const clientOffset = monitor.getClientOffset();
 
       if (clientOffset) {
-        const deleteZoneCenterX =
-          (deleteZoneRect.left + deleteZoneRect.right) / 2;
-        const deleteZoneCenterY =
-          (deleteZoneRect.top + deleteZoneRect.bottom) / 2;
-
         const overlapX =
           Math.min(clientOffset.x + 15, deleteZoneRect.right) -
           Math.max(clientOffset.x - 15, deleteZoneRect.left);
@@ -39,7 +34,7 @@ const TaskSidebar: FC = () => {
         setIsHovering(overlapX >= 15 && overlapY >= 15);
       }
     },
-    drop: (item: any) => {
+    drop: () => {
       if (isHovering) {
         return { deleted: true };
       }
@@ -50,7 +45,7 @@ const TaskSidebar: FC = () => {
   return (
     <DeleteZoneContext.Provider
       value={{
-        ref: conv_ref(deleteZoneRef),
+        ref: convRef(deleteZoneRef),
         isHovering,
         setIsHovering,
       }}

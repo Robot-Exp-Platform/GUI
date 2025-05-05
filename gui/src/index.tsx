@@ -1,5 +1,4 @@
-import { useState } from "react";
-import React from "react";
+import React, { useState } from "react";
 import ReactDOM from "react-dom/client";
 
 import { Home, TaskDesigner, UIDesigner } from "~/pages";
@@ -12,14 +11,14 @@ const App = () => {
 
   const renderPage = () => {
     switch (page) {
-      case "home":
-        return <Home.Page onNavigate={setPage} />;
-      case "TaskDesigner":
-        return <TaskDesigner.Page onBack={() => setPage("home")} />;
-      case "UIDesigner":
-        return <UIDesigner.Page onBack={() => setPage("home")} />;
-      default:
-        return <div>TODO Error Page</div>;
+    case "home":
+      return <Home.Page onNavigate={setPage} />;
+    case "TaskDesigner":
+      return <TaskDesigner.Page onBack={() => setPage("home")} />;
+    case "UIDesigner":
+      return <UIDesigner.Page onBack={() => setPage("home")} />;
+    default:
+      return <div>TODO Error Page</div>;
     }
   };
 
@@ -33,7 +32,7 @@ const App = () => {
 };
 
 const root = ReactDOM.createRoot(
-  document.getElementById("root") as HTMLElement
+  document.getElementById("root") as HTMLElement,
 );
 
 root.render(<App />);

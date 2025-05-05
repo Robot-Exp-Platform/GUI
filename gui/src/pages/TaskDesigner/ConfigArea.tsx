@@ -1,8 +1,8 @@
-import React, { FC, useState, useEffect, useCallback } from "react";
+import { FC, useState, useCallback } from "react";
 import "./styles.css";
 import TaskConfigSection from "~/components/ConfigSection/TaskConfigSection";
 import { useProject } from "~/components/contexts/ProjectContext";
-import { Robot, Sensor, createRobot, createSensor, CounterType } from "~/types";
+import { createRobot, createSensor, CounterType } from "~/types";
 
 const ConfigArea: FC = () => {
   const { project, updateProject } = useProject();
@@ -13,7 +13,7 @@ const ConfigArea: FC = () => {
   // 添加机器人或传感器 - 处理从侧边栏拖放的项目
   const handleAddItem = useCallback(
     async (type: "robot" | "sensor", name: string) => {
-      if (!project || isAdding) return;
+      if (!project || isAdding) {return;}
 
       try {
         setIsAdding(true); // 开始添加，阻止重复操作
@@ -22,8 +22,9 @@ const ConfigArea: FC = () => {
 
         if (type === "robot") {
           // 根据名称确定机器人类型
-          if (name == "panda" || name == "ur") {
-            const typeCounter = project.getNextTypeCounter(name as CounterType);
+          if (name === "panda" || name === "ur") {
+            // 获取类型计数器，但我们实际上不需要在这里使用它
+            project.getNextTypeCounter(name as CounterType);
             const robot = createRobot(nextId, name);
             // 直接修改project.config
             project.config.robots.push(robot);
@@ -31,10 +32,11 @@ const ConfigArea: FC = () => {
           } else {
             console.log("不支持的机器人类型:", name);
           }
-        } else {
+        } else if (type === "sensor") {
           // 根据名称确定传感器类型
-          if (name == "sensor_a" || name == "sensor_b") {
-            const typeCounter = project.getNextTypeCounter(name as CounterType);
+          if (name === "sensor_a" || name === "sensor_b") {
+            // 获取类型计数器，但我们实际上不需要在这里使用它
+            project.getNextTypeCounter(name as CounterType);
             const sensor = createSensor(nextId, name);
             // 直接修改project.config
             project.config.sensors.push(sensor);
@@ -52,24 +54,24 @@ const ConfigArea: FC = () => {
         setIsAdding(false); // 完成添加，允许下一次操作
       }
     },
-    [project, isAdding, updateProject]
+    [project, isAdding, updateProject],
   );
 
   // 删除机器人或传感器
   const handleDeleteItem = useCallback(
     async (id: number, type: "robot" | "sensor") => {
-      if (!project) return;
+      if (!project) {return;}
 
       try {
         if (type === "robot") {
           // 直接修改project.config
           project.config.robots = project.config.robots.filter(
-            (robot) => robot.id !== id
+            (robot) => robot.id !== id,
           );
-        } else {
+        } else if (type === "sensor") {
           // 直接修改project.config
           project.config.sensors = project.config.sensors.filter(
-            (sensor) => sensor.id !== id
+            (sensor) => sensor.id !== id,
           );
         }
         // 更新project状态并自动保存
@@ -78,7 +80,7 @@ const ConfigArea: FC = () => {
         console.error("删除项目失败:", error);
       }
     },
-    [project, updateProject]
+    [project, updateProject],
   );
 
   return (

@@ -5,14 +5,14 @@ interface ElectronAPI {
     projectName?: string;
     error?: string;
   }>;
-  
+
   selectProjectFile: () => Promise<{
     success: boolean;
     projectPath?: string;
     projectName?: string;
     error?: string;
   }>;
-  
+
   createProject: (projectInfo: {
     projectPath: string;
     projectName: string;
@@ -22,12 +22,12 @@ interface ElectronAPI {
     projectName?: string;
     error?: string;
   }>;
-  
+
   selectParentDirectory: () => Promise<{
     success: boolean;
     directoryPath?: string;
   }>;
-  
+
   openDirectory: (dirPath: string) => Promise<{
     success: boolean;
   }>;
@@ -35,12 +35,15 @@ interface ElectronAPI {
   // 新增：读取项目配置文件
   readProjectConfig: (configPath: string) => Promise<{
     success: boolean;
-    config?: any;
+    config?: Record<string, unknown>;
     error?: string;
   }>;
 
   // 新增：写入项目配置文件
-  writeProjectConfig: (configPath: string, configData: any) => Promise<{
+  writeProjectConfig: (
+    configPath: string,
+    configData: Record<string, unknown>
+  ) => Promise<{
     success: boolean;
     error?: string;
   }>;

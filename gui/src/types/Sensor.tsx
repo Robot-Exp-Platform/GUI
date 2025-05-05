@@ -4,19 +4,17 @@ export type SensorType = string;
 export interface Sensor {
   id: number;
   name: string;
-  sensor_type: SensorType;
-  params: any; // 保持为任意类型，以便存储任何合法的 JSON
+  sensorType: SensorType;
+  params: Record<string, unknown>; // 使用Record<string, unknown>替代any
 }
 
 // 创建一个特定类型的传感器实例
 export const createSensor = (
   id: number,
-  sensor_type: SensorType = "Sensor"
-): Sensor => {
-  return {
-    id,
-    name: `${sensor_type}_${id}`,
-    sensor_type,
-    params: {}, // 默认为空对象
-  };
-};
+  sensorType: SensorType = "Sensor",
+): Sensor => ({
+  id,
+  name: `${sensorType}_${id}`,
+  sensorType,
+  params: {}, // 默认为空对象
+});

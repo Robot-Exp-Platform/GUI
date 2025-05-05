@@ -1,20 +1,17 @@
 import React, { useState, useEffect } from "react";
-import { 
-  Modal, 
-  Form, 
-  Button, 
-  Message, 
-  Segment, 
-  Header, 
-  Label, 
-  TextArea, 
+import {
+  Modal,
+  Form,
+  Button,
+  Message,
+  Segment,
+  Header,
+  TextArea,
   Grid,
-  Divider
 } from "semantic-ui-react";
 import { Robot, RobotType } from "~/types/Robot";
-import { useProject } from "~/components/contexts/ProjectContext";
 import { formatJsonCompact } from "~/utils";
-import './styles.css';
+import "./styles.css";
 
 interface RobotEditorProps {
   robot: Robot;
@@ -33,15 +30,15 @@ const RobotEditor: React.FC<RobotEditorProps> = ({
 }) => {
   // 编辑模式状态
   const [isJsonMode, setIsJsonMode] = useState<boolean>(false);
-  
+
   // 表单编辑模式的状态
   const [name, setName] = useState<string>(robot.name);
-  const [robotType, setRobotType] = useState<RobotType>(robot.robot_type);
+  const [robotType, setRobotType] = useState<RobotType>(robot.robotType);
   const [rotation, setRotation] = useState<[number, number, number, number]>(
-    robot.base_pose?.rotation || [1, 0, 0, 0]
+    robot.basePose?.rotation || [1, 0, 0, 0],
   );
   const [translation, setTranslation] = useState<[number, number, number]>(
-    robot.base_pose?.translation || [0, 0, 0]
+    robot.basePose?.translation || [0, 0, 0],
   );
 
   // 焦点状态
@@ -58,22 +55,22 @@ const RobotEditor: React.FC<RobotEditorProps> = ({
   useEffect(() => {
     resetFormToOriginal();
   }, [robot, open]);
-  
+
   // 重置表单为原始状态
   const resetFormToOriginal = () => {
     setName(robot.name);
-    setRobotType(robot.robot_type);
-    setRotation(robot.base_pose?.rotation || [1, 0, 0, 0]);
-    setTranslation(robot.base_pose?.translation || [0, 0, 0]);
+    setRobotType(robot.robotType);
+    setRotation(robot.basePose?.rotation || [1, 0, 0, 0]);
+    setTranslation(robot.basePose?.translation || [0, 0, 0]);
     setNameError(null);
-    
+
     // 更新JSON文本
     const jsonObj = {
       name: robot.name,
-      robot_type: robot.robot_type,
-      base_pose: {
-        rotation: robot.base_pose?.rotation || [1, 0, 0, 0],
-        translation: robot.base_pose?.translation || [0, 0, 0],
+      robotType: robot.robotType,
+      basePose: {
+        rotation: robot.basePose?.rotation || [1, 0, 0, 0],
+        translation: robot.basePose?.translation || [0, 0, 0],
       },
     };
     setJsonText(formatJsonCompact(jsonObj));
@@ -87,10 +84,9 @@ const RobotEditor: React.FC<RobotEditorProps> = ({
     } else if (checkDuplicateName(value, robot.id)) {
       setNameError("名称已被使用，请使用不同的名称");
       return false;
-    } else {
-      setNameError(null);
-      return true;
     }
+    setNameError(null);
+    return true;
   };
 
   // 保存机器人配置
@@ -112,24 +108,34 @@ const RobotEditor: React.FC<RobotEditorProps> = ({
             throw new Error("名称必须是一个有效的字符串");
           }
 
-          if (!parsedJson.robot_type || 
-              (parsedJson.robot_type !== "panda" && parsedJson.robot_type !== "ur")) {
+          if (
+            !parsedJson.robotType ||
+            (parsedJson.robotType !== "panda" && parsedJson.robotType !== "ur")
+          ) {
             throw new Error("机器人类型必须是 'panda' 或 'ur'");
           }
 
-          if (!parsedJson.base_pose) {
-            throw new Error("base_pose 是必需的");
+          if (!parsedJson.basePose) {
+            throw new Error("basePose 是必需的");
           }
 
-          if (!Array.isArray(parsedJson.base_pose.rotation) || 
-              parsedJson.base_pose.rotation.length !== 4 ||
-              !parsedJson.base_pose.rotation.every((val: unknown) => typeof val === 'number')) {
+          if (
+            !Array.isArray(parsedJson.basePose.rotation) ||
+            parsedJson.basePose.rotation.length !== 4 ||
+            !parsedJson.basePose.rotation.every(
+              (val: unknown) => typeof val === "number",
+            )
+          ) {
             throw new Error("rotation 必须是含有4个数字的数组");
           }
 
-          if (!Array.isArray(parsedJson.base_pose.translation) || 
-              parsedJson.base_pose.translation.length !== 3 ||
-              !parsedJson.base_pose.translation.every((val: unknown) => typeof val === 'number')) {
+          if (
+            !Array.isArray(parsedJson.basePose.translation) ||
+            parsedJson.basePose.translation.length !== 3 ||
+            !parsedJson.basePose.translation.every(
+              (val: unknown) => typeof val === "number",
+            )
+          ) {
             throw new Error("translation 必须是含有3个数字的数组");
           }
 
@@ -141,11 +147,20 @@ const RobotEditor: React.FC<RobotEditorProps> = ({
           updatedRobot = {
             ...robot,
             name: parsedJson.name,
-            robot_type: parsedJson.robot_type as RobotType,
-            base_pose: {
-              rotation: parsedJson.base_pose.rotation as [number, number, number, number],
-              translation: parsedJson.base_pose.translation as [number, number, number],
-            }
+            robotType: parsedJson.robotType as RobotType,
+            basePose: {
+              rotation: parsedJson.basePose.rotation as [
+                number,
+                number,
+                number,
+                number
+              ],
+              translation: parsedJson.basePose.translation as [
+                number,
+                number,
+                number
+              ],
+            },
           };
         } catch (err) {
           if (err instanceof Error) {
@@ -158,7 +173,7 @@ const RobotEditor: React.FC<RobotEditorProps> = ({
         }
       } else {
         // 表单模式下的保存
-        
+
         // 验证表单
         if (!validateName(name)) {
           setIsSaving(false);
@@ -169,38 +184,38 @@ const RobotEditor: React.FC<RobotEditorProps> = ({
         updatedRobot = {
           ...robot,
           name,
-          robot_type: robotType,
-          base_pose: {
+          robotType,
+          basePose: {
             rotation,
             translation,
-          }
+          },
         };
       }
 
       // 保存机器人配置
       const success = await onSave(updatedRobot);
-      
+
       if (success) {
         setSaveSuccess(true);
-        
+
         // 更新当前 robot 对象的引用，这样切换模式时会使用新的值
         robot.name = updatedRobot.name;
-        robot.robot_type = updatedRobot.robot_type;
-        robot.base_pose = updatedRobot.base_pose;
-        
+        robot.robotType = updatedRobot.robotType;
+        robot.basePose = updatedRobot.basePose;
+
         // 更新表单状态
         setName(updatedRobot.name);
-        setRobotType(updatedRobot.robot_type);
-        setRotation(updatedRobot.base_pose.rotation);
-        setTranslation(updatedRobot.base_pose.translation);
-        
+        setRobotType(updatedRobot.robotType);
+        setRotation(updatedRobot.basePose.rotation);
+        setTranslation(updatedRobot.basePose.translation);
+
         // 更新JSON文本
         const jsonObj = {
           name: updatedRobot.name,
-          robot_type: updatedRobot.robot_type,
-          base_pose: {
-            rotation: updatedRobot.base_pose.rotation,
-            translation: updatedRobot.base_pose.translation,
+          robotType: updatedRobot.robotType,
+          basePose: {
+            rotation: updatedRobot.basePose.rotation,
+            translation: updatedRobot.basePose.translation,
           },
         };
         setJsonText(formatJsonCompact(jsonObj));
@@ -228,10 +243,10 @@ const RobotEditor: React.FC<RobotEditorProps> = ({
       // 从表单模式切换到JSON模式，放弃未保存的表单编辑
       const jsonObj = {
         name: robot.name,
-        robot_type: robot.robot_type,
-        base_pose: {
-          rotation: robot.base_pose.rotation,
-          translation: robot.base_pose.translation,
+        robotType: robot.robotType,
+        basePose: {
+          rotation: robot.basePose.rotation,
+          translation: robot.basePose.translation,
         },
       };
       setJsonText(formatJsonCompact(jsonObj));
@@ -262,7 +277,7 @@ const RobotEditor: React.FC<RobotEditorProps> = ({
   // 处理键盘快捷键
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     // 检测 Ctrl+S 组合键
-    if (e.ctrlKey && e.key === 's') {
+    if (e.ctrlKey && e.key === "s") {
       e.preventDefault(); // 阻止浏览器默认的保存页面行为
       handleSave();
     }
@@ -286,8 +301,12 @@ const RobotEditor: React.FC<RobotEditorProps> = ({
               <TextArea
                 placeholder="输入JSON配置"
                 value={jsonText}
-                onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setJsonText(e.target.value)}
-                className={`editor-json-textarea ${focusedField === "jsonText" ? "focus" : ""}`}
+                onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) =>
+                  setJsonText(e.target.value)
+                }
+                className={`editor-json-textarea ${
+                  focusedField === "jsonText" ? "focus" : ""
+                }`}
                 spellCheck="false"
                 onFocus={() => setFocusedField("jsonText")}
                 onBlur={() => setFocusedField(null)}
@@ -296,25 +315,23 @@ const RobotEditor: React.FC<RobotEditorProps> = ({
             </Form>
           ) : (
             <Form>
-              <Form.Input
-                label="ID"
-                value={robot.id}
-                readOnly
-              />
-              <p className="editor-id-hint">
-                机器人 ID 不能被修改
-              </p>
-              <Form.Field 
-                error={nameError ? { content: nameError, pointing: 'above' } : false}
+              <Form.Input label="ID" value={robot.id} readOnly />
+              <p className="editor-id-hint">机器人 ID 不能被修改</p>
+              <Form.Field
+                error={
+                  nameError ? { content: nameError, pointing: "above" } : false
+                }
               >
                 <label>名称</label>
-                <input 
-                  value={name} 
+                <input
+                  value={name}
                   onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
                     setName(e.target.value);
                     validateName(e.target.value);
-                  }} 
-                  className={`name-input ${focusedField === "name" ? "focus" : ""}`}
+                  }}
+                  className={`name-input ${
+                    focusedField === "name" ? "focus" : ""
+                  }`}
                   onFocus={() => setFocusedField("name")}
                   onBlur={() => setFocusedField(null)}
                 />
@@ -324,11 +341,13 @@ const RobotEditor: React.FC<RobotEditorProps> = ({
                 <Form.Select
                   value={robotType}
                   options={[
-                    { key: 'panda', text: 'Panda', value: 'panda' },
-                    { key: 'ur', text: 'UR', value: 'ur' },
+                    { key: "panda", text: "Panda", value: "panda" },
+                    { key: "ur", text: "UR", value: "ur" },
                   ]}
                   onChange={(_, data) => setRobotType(data.value as RobotType)}
-                  className={`robot-type-select ${focusedField === "robotType" ? "focus" : ""}`}
+                  className={`robot-type-select ${
+                    focusedField === "robotType" ? "focus" : ""
+                  }`}
                   onFocus={() => setFocusedField("robotType")}
                   onBlur={() => setFocusedField(null)}
                 />
@@ -346,8 +365,14 @@ const RobotEditor: React.FC<RobotEditorProps> = ({
                             type="number"
                             value={val}
                             step="0.01"
-                            onChange={(e: React.ChangeEvent<HTMLInputElement>) => handleRotationChange(index, e.target.value)}
-                            className={`rotation-input ${focusedField === `rotation-${index}` ? "focus" : ""}`}
+                            onChange={(
+                              e: React.ChangeEvent<HTMLInputElement>,
+                            ) => handleRotationChange(index, e.target.value)}
+                            className={`rotation-input ${
+                              focusedField === `rotation-${index}`
+                                ? "focus"
+                                : ""
+                            }`}
                             onFocus={() => setFocusedField(`rotation-${index}`)}
                             onBlur={() => setFocusedField(null)}
                           />
@@ -366,9 +391,17 @@ const RobotEditor: React.FC<RobotEditorProps> = ({
                             type="number"
                             value={val}
                             step="0.01"
-                            onChange={(e: React.ChangeEvent<HTMLInputElement>) => handleTranslationChange(index, e.target.value)}
-                            className={`translation-input ${focusedField === `translation-${index}` ? "focus" : ""}`}
-                            onFocus={() => setFocusedField(`translation-${index}`)}
+                            onChange={(
+                              e: React.ChangeEvent<HTMLInputElement>,
+                            ) => handleTranslationChange(index, e.target.value)}
+                            className={`translation-input ${
+                              focusedField === `translation-${index}`
+                                ? "focus"
+                                : ""
+                            }`}
+                            onFocus={() =>
+                              setFocusedField(`translation-${index}`)
+                            }
                             onBlur={() => setFocusedField(null)}
                           />
                         </Grid.Column>

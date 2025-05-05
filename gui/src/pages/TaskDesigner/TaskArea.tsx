@@ -8,11 +8,16 @@ import React, {
 } from "react";
 import "./styles.css";
 import Task from "../../components/Task";
-import { conv_ref } from "~/utils";
+import { convRef } from "~/utils";
 import DeleteZoneContext from "~/components/contexts/DeleteZoneContext";
 import { useProject } from "~/components/contexts/ProjectContext";
 import Xarrow from "react-xarrows";
 import { createTask } from "~/types/Task"; // 导入createTask函数
+
+// 全局window接口扩展
+interface ExtendedWindow extends Window {
+  __newTaskCreated: string | null;
+}
 
 // 任务依赖连线预览
 interface DependencyLine {
@@ -75,27 +80,28 @@ const TaskArea: FC = () => {
   // 控制视觉反馈的临时偏移量
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
 
-  // 用于强制重新渲染箭头的计数器
-  const [arrowUpdateCounter, setArrowUpdateCounter] = useState(0);
-
   const deleteZoneContext = useContext(DeleteZoneContext);
 
   // 加载依赖关系
   useEffect(() => {
-    if (!project) return;
+    if (!project) {
+      return;
+    }
 
     // 从project.config直接获取任务依赖关系
     setDependencies(
-      project.config.task_graph.map(([from, to]) => [
+      project.config.taskGraph.map(([from, to]) => [
         `task-${from}`,
         `task-${to}`,
-      ])
+      ]),
     );
-  }, [project?.config.task_graph]);
+  }, [project?.config.taskGraph]);
 
   // 从项目配置中加载任务
   useEffect(() => {
-    if (!project) return;
+    if (!project) {
+      return;
+    }
 
     // 从项目配置中获取任务
     const projectTasks = project.config.tasks || [];
@@ -124,10 +130,12 @@ const TaskArea: FC = () => {
   // 检查是否会形成循环依赖
   const checkCircularDependency = useCallback(
     (fromTaskId: string, toTaskId: string): boolean => {
-      if (!project) return false;
+      if (!project) {
+        return false;
+      }
       return project.hasCircularDependency(fromTaskId, toTaskId);
     },
-    [project]
+    [project],
   );
 
   // 计算拖拽依赖过程中所有可能导致循环依赖的任务
@@ -146,13 +154,13 @@ const TaskArea: FC = () => {
             taskId !== fromTaskId &&
             checkCircularDependency(
               fromTaskId.replace("task-", ""),
-              taskId.replace("task-", "")
-            )
+              taskId.replace("task-", ""),
+            ),
         );
 
       setCircularDependencyTasks(circularTasks);
     },
-    [tasks, checkCircularDependency, project]
+    [tasks, checkCircularDependency, project],
   );
 
   // 全局鼠标移动追踪，用于箭头绘制
@@ -184,10 +192,16 @@ const TaskArea: FC = () => {
 
     // 全局鼠标抬起事件处理 - 作为安全保障清理机制
     const handleGlobalMouseUp = (e: MouseEvent) => {
+      // 扩展MouseEvent以包含可能的_handledByAnchor属性
+      interface ExtendedMouseEvent extends MouseEvent {
+        _handledByAnchor?: boolean;
+      }
+      const extendedEvent = e as ExtendedMouseEvent;
+
       // 只处理未被Task组件专门处理的事件
       if (
         (dependencyPreview?.active || dependencyDragRef.current.isDragging) &&
-        !(e as any)._handledByAnchor
+        !extendedEvent._handledByAnchor
       ) {
         // 重置状态
         setDependencyPreview(null);
@@ -208,7 +222,9 @@ const TaskArea: FC = () => {
 
   useEffect(() => {
     const container = containerRef.current;
-    if (!container) return;
+    if (!container) {
+      return;
+    }
 
     // 鼠标按下事件处理
     const handleMouseDown = (e: MouseEvent) => {
@@ -239,7 +255,9 @@ const TaskArea: FC = () => {
 
     // 鼠标移动事件处理
     const handleMouseMove = (e: MouseEvent) => {
-      if (!dragState.current.isDragging) return;
+      if (!dragState.current.isDragging) {
+        return;
+      }
 
       // 计算总移动距离
       const deltaX = e.clientX - dragState.current.startPosition.x;
@@ -254,7 +272,9 @@ const TaskArea: FC = () => {
 
     // 鼠标抬起事件处理
     const handleMouseUp = async (e: MouseEvent) => {
-      if (!dragState.current.isDragging) return;
+      if (!dragState.current.isDragging) {
+        return;
+      }
 
       // 计算总移动距离
       const deltaX = e.clientX - dragState.current.startPosition.x;
@@ -270,9 +290,11 @@ const TaskArea: FC = () => {
           // 更新后的任务数组
           const updatedTasks = prevTasks.map((task) => {
             const initialPos = dragState.current.tasksInitialPositions.get(
-              task.id
+              task.id,
             );
-            if (!initialPos) return task;
+            if (!initialPos) {
+              return task;
+            }
 
             // 计算新位置并与网格对齐
             const newX = Math.round((initialPos.x + deltaX) / 20) * 20;
@@ -287,15 +309,19 @@ const TaskArea: FC = () => {
           // 任务位置更新完成后，保存到配置文件
           const savePositions = async () => {
             try {
-              if (!project) return;
+              if (!project) {
+                return;
+              }
 
               // 为每个任务更新位置信息
               for (const task of updatedTasks) {
                 const taskIndex = project.config.tasks.findIndex(
-                  (t) => t.id === task.numericId
+                  (t) => t.id === task.numericId,
                 );
                 if (taskIndex !== -1) {
-                  project.config.tasks[taskIndex].position = { ...task.position };
+                  project.config.tasks[taskIndex].position = {
+                    ...task.position,
+                  };
                 }
               }
 
@@ -314,29 +340,9 @@ const TaskArea: FC = () => {
             setDragOffset({ x: 0, y: 0 });
             // 隐藏网格并重置鼠标样式
             setShowGrid(false);
-            if (container) container.style.cursor = "grab";
-
-            // 使用更可靠的方式强制更新箭头位置
-            setTimeout(() => {
-              // 获取所有箭头元素
-              const arrowElements =
-                document.querySelectorAll('[id^="xarrow-"]');
-
-              // 触发重新布局
-              arrowElements.forEach((arrow) => {
-                if (arrow instanceof HTMLElement) {
-                  // 先隐藏再显示，强制浏览器重新计算位置
-                  const currentDisplay = arrow.style.display;
-                  arrow.style.display = "none";
-                  // 强制浏览器重排
-                  arrow.offsetHeight;
-                  arrow.style.display = currentDisplay;
-                }
-              });
-
-              // 增加计数器触发额外的更新机制
-              setArrowUpdateCounter((prev) => prev + 1);
-            }, 0);
+            if (container) {
+              container.style.cursor = "grab";
+            }
           });
 
           return updatedTasks;
@@ -372,21 +378,10 @@ const TaskArea: FC = () => {
     }
   }, [dependencyPreview, calculateCircularDependencyTasks]);
 
-  // 监听任务位置变化，强制更新箭头
-  useEffect(() => {
-    // 位置变化时，更新一个标识符来强制刷新箭头
-    const arrowUpdateElement = document.getElementById("arrows-wrapper");
-    if (arrowUpdateElement) {
-      // 触发微小的DOM变化，强制React-Xarrows重新计算位置
-      arrowUpdateElement.style.transform = "scale(1)";
-      setTimeout(() => {
-        arrowUpdateElement.style.transform = "";
-      }, 0);
-    }
-  }, [tasks, dragOffset]);
-
   const handleDoubleClick = async (e: React.MouseEvent<HTMLDivElement>) => {
-    if (!project) return;
+    if (!project) {
+      return;
+    }
 
     // 计算点击位置相对于容器的坐标
     const container = e.currentTarget;
@@ -433,12 +428,14 @@ const TaskArea: FC = () => {
         setTasks((prevTasks) => [...prevTasks, newTask]);
 
         // 添加一个延迟标志，防止任务进入无法拖拽状态
-        (window as any).__newTaskCreated = taskId;
+        (window as unknown as ExtendedWindow).__newTaskCreated = taskId;
 
         // 一段时间后移除标志
         setTimeout(() => {
-          if ((window as any).__newTaskCreated === taskId) {
-            (window as any).__newTaskCreated = null;
+          if (
+            (window as unknown as ExtendedWindow).__newTaskCreated === taskId
+          ) {
+            (window as unknown as ExtendedWindow).__newTaskCreated = null;
           }
         }, 500);
       } catch (error) {
@@ -449,9 +446,11 @@ const TaskArea: FC = () => {
 
   const handleTaskPositionChange = async (
     id: string,
-    position: { x: number; y: number }
+    position: { x: number; y: number },
   ) => {
-    if (!project) return;
+    if (!project) {
+      return;
+    }
 
     // 将位置调整为最近的20px网格
     const snapX = Math.round(position.x / 20) * 20;
@@ -467,14 +466,14 @@ const TaskArea: FC = () => {
     // 更新本地状态
     setTasks((prevTasks) =>
       prevTasks.map((t) =>
-        t.id === id ? { ...t, position: { x: snapX, y: snapY } } : t
-      )
+        t.id === id ? { ...t, position: { x: snapX, y: snapY } } : t,
+      ),
     );
 
     try {
       // 查找并更新项目配置中的任务位置
       const taskIndex = project.config.tasks.findIndex(
-        (t) => t.id === task.numericId
+        (t) => t.id === task.numericId,
       );
       if (taskIndex !== -1) {
         // 保留其他属性，只更新位置
@@ -488,7 +487,9 @@ const TaskArea: FC = () => {
   };
 
   const handleTaskNameChange = async (id: string, name: string) => {
-    if (!project) return;
+    if (!project) {
+      return;
+    }
 
     try {
       // 查找任务以获取数字ID
@@ -500,12 +501,12 @@ const TaskArea: FC = () => {
 
       // 更新本地状态
       setTasks((prevTasks) =>
-        prevTasks.map((task) => (task.id === id ? { ...task, name } : task))
+        prevTasks.map((task) => (task.id === id ? { ...task, name } : task)),
       );
 
       // 查找并更新项目配置中的任务名称
       const taskIndex = project.config.tasks.findIndex(
-        (t) => t.id === task.numericId
+        (t) => t.id === task.numericId,
       );
       if (taskIndex !== -1) {
         project.config.tasks[taskIndex].name = name;
@@ -518,9 +519,11 @@ const TaskArea: FC = () => {
 
   const handleTaskSizeChange = async (
     id: string,
-    size: { width: number; height: number }
+    size: { width: number; height: number },
   ) => {
-    if (!project) return;
+    if (!project) {
+      return;
+    }
 
     // 将大小调整为20px的倍数
     const snapWidth = Math.round(size.width / 20) * 20;
@@ -538,14 +541,14 @@ const TaskArea: FC = () => {
       prevTasks.map((t) =>
         t.id === id
           ? { ...t, size: { width: snapWidth, height: snapHeight } }
-          : t
-      )
+          : t,
+      ),
     );
 
     try {
       // 查找并更新项目配置中的任务大小
       const taskIndex = project.config.tasks.findIndex(
-        (t) => t.id === task.numericId
+        (t) => t.id === task.numericId,
       );
       if (taskIndex !== -1) {
         // 保留其他属性，只更新大小
@@ -563,7 +566,9 @@ const TaskArea: FC = () => {
 
   // 处理任务删除功能
   const handleTaskDelete = async (id: string) => {
-    if (!project) return;
+    if (!project) {
+      return;
+    }
 
     try {
       // 查找要删除的任务，获取其数字ID
@@ -575,14 +580,14 @@ const TaskArea: FC = () => {
 
       // 从项目配置中删除任务
       project.config.tasks = project.config.tasks.filter(
-        (t) => t.id !== taskToDelete.numericId
+        (t) => t.id !== taskToDelete.numericId,
       );
 
       // 删除与此任务相关的所有依赖关系
-      project.config.task_graph = project.config.task_graph.filter(
+      project.config.taskGraph = project.config.taskGraph.filter(
         ([from, to]) =>
           from !== taskToDelete.numericId.toString() &&
-          to !== taskToDelete.numericId.toString()
+          to !== taskToDelete.numericId.toString(),
       );
 
       // 保存更新
@@ -593,7 +598,7 @@ const TaskArea: FC = () => {
 
       // 更新依赖关系UI状态
       setDependencies((prevDeps) =>
-        prevDeps.filter(([from, to]) => from !== id && to !== id)
+        prevDeps.filter(([from, to]) => from !== id && to !== id),
       );
     } catch (error) {
       console.error("删除任务失败:", error);
@@ -613,7 +618,7 @@ const TaskArea: FC = () => {
   const handleDependencyStart = (
     fromTaskId: string,
     anchorPoint?: string,
-    initialPosition?: { x: number; y: number }
+    initialPosition?: { x: number; y: number },
   ) => {
     // 只有在容器引用可用时才继续
     if (!containerRef.current) {
@@ -645,7 +650,9 @@ const TaskArea: FC = () => {
 
   // 处理依赖关系拖动
   const handleDependencyDrag = (e: MouseEvent) => {
-    if (!dependencyPreview?.active || !containerRef.current) return;
+    if (!dependencyPreview?.active || !containerRef.current) {
+      return;
+    }
 
     // 计算鼠标位置相对于容器的坐标
     const containerRect = containerRef.current.getBoundingClientRect();
@@ -657,7 +664,9 @@ const TaskArea: FC = () => {
   };
 
   const handleDependencyEnd = async (toTaskId: string | null) => {
-    if (!project) return;
+    if (!project) {
+      return;
+    }
 
     // 获取ref中存储的当前拖拽任务ID
     const fromId = dependencyDragRef.current.fromId;
@@ -694,13 +703,13 @@ const TaskArea: FC = () => {
       const toNumericId = toTaskId.replace("task-", "");
 
       // 检查是否已存在相同的依赖关系
-      const exists = project.config.task_graph.some(
-        ([from, to]) => from === fromNumericId && to === toNumericId
+      const exists = project.config.taskGraph.some(
+        ([from, to]) => from === fromNumericId && to === toNumericId,
       );
 
       if (!exists) {
         // 添加新的依赖关系
-        project.config.task_graph.push([fromNumericId, toNumericId]);
+        project.config.taskGraph.push([fromNumericId, toNumericId]);
         await updateProject();
 
         // 更新本地状态
@@ -753,15 +762,15 @@ const TaskArea: FC = () => {
           {dependencyPreview &&
             dependencyPreview.active &&
             containerRef.current && (
-              <div
-                id="temp-arrow-end"
-                className="temp-arrow-end"
-                style={{
-                  left: mousePosition.x,
-                  top: mousePosition.y,
-                }}
-              />
-            )}
+            <div
+              id="temp-arrow-end"
+              className="temp-arrow-end"
+              style={{
+                left: mousePosition.x,
+                top: mousePosition.y,
+              }}
+            />
+          )}
 
           {/* 渲染正在创建的依赖关系预览 */}
           {dependencyPreview && dependencyPreview.active && (
@@ -792,9 +801,8 @@ const TaskArea: FC = () => {
             onNameChange={handleTaskNameChange}
             onSizeChange={handleTaskSizeChange}
             onDelete={handleTaskDelete}
-            containerRef={conv_ref(containerRef)}
+            containerRef={convRef(containerRef)}
             deleteZoneRef={deleteZoneContext.ref}
-            deleteZoneIsHovering={deleteZoneContext.isHovering}
             onDragStart={handleDragOrResizeStart}
             onDragEnd={handleDragOrResizeEnd}
             onResizeStart={handleDragOrResizeStart}

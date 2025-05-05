@@ -1,7 +1,5 @@
 // 将引用对象转换为实际引用
-export function conv_ref(x: any) {
-  return x as unknown as React.RefObject<HTMLDivElement>;
-}
+export const convRef = (x: unknown): React.RefObject<HTMLDivElement> => x as unknown as React.RefObject<HTMLDivElement>;
 
 /**
  * 格式化 JSON 字符串，智能处理数组：
@@ -10,13 +8,13 @@ export function conv_ref(x: any) {
  * @param obj 要格式化的对象
  * @returns 格式化后的 JSON 字符串
  */
-export function formatJsonCompact(obj: any): string {
+export const formatJsonCompact = (obj: unknown): string => {
   // 首先将对象转为标准 JSON 字符串
   const jsonString = JSON.stringify(obj, null, 2);
 
   // 使用正则表达式查找不包含 { 或 [ 的数组，并将其转换为单行格式
   return jsonString.replace(
-    /\[\n\s+([^\[\{]*?(?:\n\s+[^\[\{]*?)*)\n\s+\]/g,
+    /\[\n\s+([^[{]*?(?:\n\s+[^[{]*?)*)\n\s+\]/g,
     (match, p1) => {
       // 检查是否包含嵌套的数组或对象
       if (p1.includes("[") || p1.includes("{")) {
@@ -26,6 +24,6 @@ export function formatJsonCompact(obj: any): string {
       // 将捕获的数组内容按逗号分隔并去除前导空格
       const values = p1.split(",").map((item: string) => item.trim());
       return `[${values.join(", ")}]`;
-    }
+    },
   );
-}
+};

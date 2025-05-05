@@ -3,13 +3,9 @@ import React, {
   useState,
   useContext,
   ReactNode,
-  useEffect,
   useCallback,
 } from "react";
-import { Project, ProjectConfig, CounterType } from "~/types";
-import { Robot } from "~/types/Robot";
-import { Sensor } from "~/types/Sensor";
-import { Task } from "~/types/Task";
+import { Project, CounterType } from "~/types";
 
 interface ProjectContextType {
   project: Project | null;
@@ -35,32 +31,35 @@ export const ProjectProvider: React.FC<{ children: ReactNode }> = ({
         if (loadedProject) {
           setProject(loadedProject);
           return true;
-        } else {
-          // 如果无法加载，创建一个新的项目
-          const newProject = new Project(projectName, projectPath);
-          setProject(newProject);
-          return await newProject.save();
         }
+        // 如果无法加载，创建一个新的项目
+        const newProject = new Project(projectName, projectPath);
+        setProject(newProject);
+        return await newProject.save();
       } catch (error) {
         console.error("加载项目失败:", error);
         return false;
       }
     },
-    []
+    [],
   );
 
   const getNextTypeCounter = useCallback(
     (type: CounterType): number => {
-      if (!project) return -1;
+      if (!project) {
+        return -1;
+      }
       return project.getNextTypeCounter(type);
     },
-    [project]
+    [project],
   );
 
   // 更新组件状态以触发重新渲染，并自动保存项目配置
   const updateProject = useCallback(async () => {
     setProject((prev) => {
-      if (!prev) return null;
+      if (!prev) {
+        return null;
+      }
 
       // 异步保存项目配置
       prev.save().catch((error) => {

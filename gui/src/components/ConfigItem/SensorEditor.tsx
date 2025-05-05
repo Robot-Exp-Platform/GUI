@@ -1,18 +1,15 @@
 import React, { useState, useEffect } from "react";
-import { 
-  Modal, 
-  Form, 
-  Button, 
-  Message, 
-  Segment, 
-  Header, 
-  TextArea, 
-  Divider,
-  Icon
+import {
+  Modal,
+  Form,
+  Button,
+  Message,
+  Segment,
+  TextArea,
 } from "semantic-ui-react";
 import { Sensor, SensorType } from "~/types/Sensor";
 import { formatJsonCompact } from "~/utils";
-import './styles.css';
+import "./styles.css";
 
 interface SensorEditorProps {
   sensor: Sensor;
@@ -31,10 +28,10 @@ const SensorEditor: React.FC<SensorEditorProps> = ({
 }) => {
   // 编辑模式状态
   const [isJsonMode, setIsJsonMode] = useState<boolean>(false);
-  
+
   // 表单编辑模式的状态
   const [name, setName] = useState<string>(sensor.name);
-  const [sensorType, setSensorType] = useState<SensorType>(sensor.sensor_type);
+  const [sensorType, setSensorType] = useState<SensorType>(sensor.sensorType);
   const [params, setParams] = useState<string>("");
   const [paramsError, setParamsError] = useState<string | null>(null);
 
@@ -52,7 +49,7 @@ const SensorEditor: React.FC<SensorEditorProps> = ({
   useEffect(() => {
     resetFormToOriginal();
   }, [sensor, open]);
-  
+
   // 监听编辑器的打开状态，当关闭后重新打开时清除成功保存提示
   useEffect(() => {
     if (open) {
@@ -64,21 +61,21 @@ const SensorEditor: React.FC<SensorEditorProps> = ({
   // 重置表单为原始状态
   const resetFormToOriginal = () => {
     setName(sensor.name);
-    setSensorType(sensor.sensor_type);
+    setSensorType(sensor.sensorType);
     try {
       // 将参数对象转换为格式化的 JSON 字符串
       setParams(JSON.stringify(sensor.params || {}, null, 2));
-    } catch (err) {
+    } catch (_) {
       setParams("{}");
     }
     setParamsError(null);
     setNameError(null);
-    
+
     // 更新JSON文本
     const jsonObj = {
       name: sensor.name,
-      sensor_type: sensor.sensor_type,
-      params: sensor.params || {}
+      sensorType: sensor.sensorType,
+      params: sensor.params || {},
     };
     setJsonText(formatJsonCompact(jsonObj));
   };
@@ -91,20 +88,21 @@ const SensorEditor: React.FC<SensorEditorProps> = ({
     } else if (checkDuplicateName(value, sensor.id)) {
       setNameError("名称已被使用，请使用不同的名称");
       return false;
-    } else {
-      setNameError(null);
-      return true;
     }
+    setNameError(null);
+    return true;
   };
 
   // 验证参数 JSON
-  const validateParams = (jsonString: string): any => {
+  const validateParams = (
+    jsonString: string
+  ): Record<string, unknown> | null => {
     try {
       const parsed = JSON.parse(jsonString);
       setParamsError(null);
       return parsed;
-    } catch (err) {
-      setParamsError("无效的 JSON 格式");
+    } catch (_) {
+      setParamsError("无效的 JSON 格式 ");
       return null;
     }
   };
@@ -116,7 +114,7 @@ const SensorEditor: React.FC<SensorEditorProps> = ({
     // 清除保存成功的提示
     setSaveSuccess(false);
   };
-  
+
   // 用户输入传感器类型时的处理函数
   const handleSensorTypeChange = (value: string) => {
     setSensorType(value);
@@ -151,7 +149,10 @@ const SensorEditor: React.FC<SensorEditorProps> = ({
             throw new Error("名称必须是一个有效的字符串");
           }
 
-          if (!parsedJson.sensor_type || typeof parsedJson.sensor_type !== "string") {
+          if (
+            !parsedJson.sensorType ||
+            typeof parsedJson.sensorType !== "string"
+          ) {
             throw new Error("传感器类型必须是有效的字符串");
           }
 
@@ -163,8 +164,8 @@ const SensorEditor: React.FC<SensorEditorProps> = ({
           updatedSensor = {
             ...sensor,
             name: parsedJson.name,
-            sensor_type: parsedJson.sensor_type,
-            params: parsedJson.params || {}
+            sensorType: parsedJson.sensorType,
+            params: parsedJson.params || {},
           };
         } catch (err) {
           if (err instanceof Error) {
@@ -177,7 +178,7 @@ const SensorEditor: React.FC<SensorEditorProps> = ({
         }
       } else {
         // 表单模式下的保存
-        
+
         // 验证表单
         if (!validateName(name)) {
           setIsSaving(false);
@@ -195,27 +196,27 @@ const SensorEditor: React.FC<SensorEditorProps> = ({
         updatedSensor = {
           ...sensor,
           name,
-          sensor_type: sensorType,
-          params: parsedParams
+          sensorType,
+          params: parsedParams,
         };
       }
 
       // 保存传感器配置
       const success = await onSave(updatedSensor);
-      
+
       if (success) {
         setSaveSuccess(true);
-        
+
         // 更新表单状态和原始数据
         setName(updatedSensor.name);
-        setSensorType(updatedSensor.sensor_type);
+        setSensorType(updatedSensor.sensorType);
         setParams(JSON.stringify(updatedSensor.params || {}, null, 2));
-        
+
         // 更新JSON文本
         const jsonObj = {
           name: updatedSensor.name,
-          sensor_type: updatedSensor.sensor_type,
-          params: updatedSensor.params
+          sensorType: updatedSensor.sensorType,
+          params: updatedSensor.params,
         };
         setJsonText(formatJsonCompact(jsonObj));
       } else {
@@ -242,8 +243,8 @@ const SensorEditor: React.FC<SensorEditorProps> = ({
       // 从表单模式切换到JSON模式，放弃未保存的表单编辑
       const jsonObj = {
         name: sensor.name,
-        sensor_type: sensor.sensor_type,
-        params: sensor.params || {}
+        sensorType: sensor.sensorType,
+        params: sensor.params || {},
       };
       setJsonText(formatJsonCompact(jsonObj));
       setIsJsonMode(true);
@@ -258,7 +259,7 @@ const SensorEditor: React.FC<SensorEditorProps> = ({
   // 处理键盘快捷键
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     // 检测 Ctrl+S 组合键
-    if (e.ctrlKey && e.key === 's') {
+    if (e.ctrlKey && e.key === "s") {
       e.preventDefault(); // 阻止浏览器默认的保存页面行为
       handleSave();
     }
@@ -282,8 +283,12 @@ const SensorEditor: React.FC<SensorEditorProps> = ({
               <TextArea
                 placeholder="输入JSON配置"
                 value={jsonText}
-                onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setJsonText(e.target.value)}
-                className={`editor-json-textarea-sensor ${focusedField === "jsonText" ? "focus" : ""}`}
+                onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) =>
+                  setJsonText(e.target.value)
+                }
+                className={`editor-json-textarea-sensor ${
+                  focusedField === "jsonText" ? "focus" : ""
+                }`}
                 spellCheck={false}
                 onFocus={() => setFocusedField("jsonText")}
                 onBlur={() => setFocusedField(null)}
@@ -292,30 +297,28 @@ const SensorEditor: React.FC<SensorEditorProps> = ({
             </Form>
           ) : (
             <Form>
-              <Form.Input
-                label="ID"
-                value={sensor.id}
-                readOnly
-              />
-              <p className="editor-id-hint">
-                传感器 ID 不能被修改
-              </p>
+              <Form.Input label="ID" value={sensor.id} readOnly />
+              <p className="editor-id-hint">传感器 ID 不能被修改</p>
               <Form.Field
-                error={nameError ? { content: nameError, pointing: 'above' } : false}
+                error={
+                  nameError ? { content: nameError, pointing: "above" } : false
+                }
               >
                 <label>名称</label>
-                <input 
-                  value={name} 
-                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => handleNameChange(e.target.value)} 
+                <input
+                  value={name}
+                  onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                    handleNameChange(e.target.value)
+                  }
                   onFocus={() => setFocusedField("name")}
                   onBlur={() => setFocusedField(null)}
                 />
               </Form.Field>
               <Form.Field>
                 <label>传感器类型</label>
-                <input 
+                <input
                   value={sensorType}
-                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => 
+                  onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
                     handleSensorTypeChange(e.target.value)
                   }
                   onFocus={() => setFocusedField("sensorType")}
@@ -323,14 +326,24 @@ const SensorEditor: React.FC<SensorEditorProps> = ({
                   placeholder="输入传感器类型"
                 />
               </Form.Field>
-              
-              <Form.Field error={paramsError ? { content: paramsError, pointing: 'above' } : false}>
+
+              <Form.Field
+                error={
+                  paramsError
+                    ? { content: paramsError, pointing: "above" }
+                    : false
+                }
+              >
                 <label>参数 (JSON)</label>
                 <TextArea
                   placeholder="{ ... }"
                   value={params}
-                  onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => handleParamsChange(e.target.value)}
-                  className={`params-textarea ${focusedField === "params" ? "focus" : ""}`}
+                  onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) =>
+                    handleParamsChange(e.target.value)
+                  }
+                  className={`params-textarea ${
+                    focusedField === "params" ? "focus" : ""
+                  }`}
                   spellCheck={false}
                   onFocus={() => setFocusedField("params")}
                   onBlur={() => {

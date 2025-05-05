@@ -1,7 +1,4 @@
-import DraggableDivider from './DraggableDivider';
-import Task from './Task';
+import DraggableDivider from "./DraggableDivider";
+import Task from "./Task";
 
-export {
-  DraggableDivider,
-  Task
-};
+export { DraggableDivider, Task };

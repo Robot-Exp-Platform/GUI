@@ -1,6 +1,6 @@
-import React, { FC, useCallback, useEffect } from "react";
+import { FC, useCallback, useEffect } from "react";
 import { useDrop } from "react-dnd";
-import { conv_ref } from "~/utils";
+import { convRef } from "~/utils";
 import TaskConfigItem from "~/components/ConfigItem/TaskConfigItem";
 import { Robot, Sensor } from "~/types";
 
@@ -32,7 +32,7 @@ const TaskConfigSection: FC<TaskConfigSectionProps> = ({
       onItemAdd(item.type, item.specificType);
       return { dropped: true };
     },
-    [onItemAdd]
+    [onItemAdd],
   );
 
   // 使用键值对象强化接受类型，确保正确识别
@@ -54,7 +54,7 @@ const TaskConfigSection: FC<TaskConfigSectionProps> = ({
         canDrop: !!monitor.canDrop(),
       }),
     }),
-    [acceptType, handleDrop]
+    [acceptType, handleDrop],
   );
 
   // 调试用
@@ -64,7 +64,7 @@ const TaskConfigSection: FC<TaskConfigSectionProps> = ({
 
   return (
     <div
-      ref={conv_ref(drop)}
+      ref={convRef(drop)}
       className={`config-section ${
         isOver && canDrop ? "config-section-active" : ""
       }`}
@@ -84,10 +84,10 @@ const TaskConfigSection: FC<TaskConfigSectionProps> = ({
               name={item.name}
               onDelete={onItemDelete}
               robotType={
-                type === "robot" ? (item as Robot).robot_type : undefined
+                type === "robot" ? (item as Robot).robotType : undefined
               }
               sensorType={
-                type === "sensor" ? (item as Sensor).sensor_type : undefined
+                type === "sensor" ? (item as Sensor).sensorType : undefined
               }
             />
           ))

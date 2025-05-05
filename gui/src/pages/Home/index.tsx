@@ -10,7 +10,6 @@ import {
   Tab,
 } from "semantic-ui-react";
 import { useProject } from "~/components/contexts/ProjectContext";
-import { Project } from "~/types";
 
 interface HomeProps {
   onNavigate: (page: string) => void;
@@ -38,7 +37,7 @@ export const Page: FC<HomeProps> = ({ onNavigate }) => {
       if (result.success && result.projectPath && result.projectName) {
         const success = await loadProject(
           result.projectPath,
-          result.projectName
+          result.projectName,
         );
 
         if (success) {
@@ -50,7 +49,7 @@ export const Page: FC<HomeProps> = ({ onNavigate }) => {
       } else if (result.error) {
         setError(result.error);
       }
-    } catch (err) {
+    } catch (_) {
       setError("选择项目失败");
     } finally {
       setLoading(false);
@@ -67,7 +66,7 @@ export const Page: FC<HomeProps> = ({ onNavigate }) => {
       if (result.success && result.projectPath && result.projectName) {
         const success = await loadProject(
           result.projectPath,
-          result.projectName
+          result.projectName,
         );
 
         if (success) {
@@ -79,7 +78,7 @@ export const Page: FC<HomeProps> = ({ onNavigate }) => {
       } else if (result.error) {
         setError(result.error);
       }
-    } catch (err) {
+    } catch (_) {
       setError("选择项目文件失败");
     } finally {
       setLoading(false);
@@ -121,7 +120,7 @@ export const Page: FC<HomeProps> = ({ onNavigate }) => {
       if (result.success && result.projectPath && result.projectName) {
         const success = await loadProject(
           result.projectPath,
-          result.projectName
+          result.projectName,
         );
 
         if (success) {
@@ -133,7 +132,7 @@ export const Page: FC<HomeProps> = ({ onNavigate }) => {
       } else if (result.error) {
         setError(result.error);
       }
-    } catch (err) {
+    } catch (_) {
       setError("创建项目失败");
     } finally {
       setLoading(false);

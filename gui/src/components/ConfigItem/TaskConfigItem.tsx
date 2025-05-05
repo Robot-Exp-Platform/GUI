@@ -36,13 +36,11 @@ const TaskConfigItem: FC<TaskConfigItemProps> = ({
   }, [name]);
 
   // 获取当前机器人或传感器对象
-  const getRobotById = (id: number) => {
-    return project?.config.robots.find((robot) => robot.id === id);
-  };
+  const getRobotById = (id: number) =>
+    project?.config.robots.find((robot) => robot.id === id);
 
-  const getSensorById = (id: number) => {
-    return project?.config.sensors.find((sensor) => sensor.id === id);
-  };
+  const getSensorById = (id: number) =>
+    project?.config.sensors.find((sensor) => sensor.id === id);
 
   const handleContextMenu = (e: React.MouseEvent) => {
     e.preventDefault(); // 防止默认右键菜单显示
@@ -59,7 +57,7 @@ const TaskConfigItem: FC<TaskConfigItemProps> = ({
     try {
       // 查找现有机器人的索引
       const robotIndex = project?.config.robots.findIndex(
-        (r) => r.id === updatedRobot.id
+        (r) => r.id === updatedRobot.id,
       );
 
       if (robotIndex !== undefined && robotIndex >= 0 && project) {
@@ -71,10 +69,9 @@ const TaskConfigItem: FC<TaskConfigItemProps> = ({
         // 更新显示名称
         setDisplayName(updatedRobot.name);
         return true;
-      } else {
-        console.error("找不到要更新的机器人:", updatedRobot.id);
-        return false;
       }
+      console.error("找不到要更新的机器人:", updatedRobot.id);
+      return false;
     } catch (error) {
       console.error("保存机器人配置失败:", error);
       return false;
@@ -86,7 +83,7 @@ const TaskConfigItem: FC<TaskConfigItemProps> = ({
     try {
       // 查找现有传感器的索引
       const sensorIndex = project?.config.sensors.findIndex(
-        (s) => s.id === updatedSensor.id
+        (s) => s.id === updatedSensor.id,
       );
 
       if (sensorIndex !== undefined && sensorIndex >= 0 && project) {
@@ -99,10 +96,9 @@ const TaskConfigItem: FC<TaskConfigItemProps> = ({
         setDisplayName(updatedSensor.name);
         console.log("传感器更新成功:", updatedSensor);
         return true;
-      } else {
-        console.error("找不到要更新的传感器:", updatedSensor.id);
-        return false;
       }
+      console.error("找不到要更新的传感器:", updatedSensor.id);
+      return false;
     } catch (error) {
       console.error("保存传感器配置失败:", error);
       return false;
@@ -110,29 +106,22 @@ const TaskConfigItem: FC<TaskConfigItemProps> = ({
   };
 
   // 检查是否有重名
-  const checkDuplicateRobotName = (name: string, currentId: number) => {
-    return (
-      project?.config.robots.some(
-        (robot) => robot.name === name && robot.id !== currentId
-      ) || false
-    );
-  };
+  const checkDuplicateRobotName = (name: string, currentId: number) =>
+    project?.config.robots.some(
+      (robot) => robot.name === name && robot.id !== currentId,
+    ) || false;
 
-  const checkDuplicateSensorName = (name: string, currentId: number) => {
-    return (
-      project?.config.sensors.some(
-        (sensor) => sensor.name === name && sensor.id !== currentId
-      ) || false
-    );
-  };
+  const checkDuplicateSensorName = (name: string, currentId: number) =>
+    project?.config.sensors.some(
+      (sensor) => sensor.name === name && sensor.id !== currentId,
+    ) || false;
 
   // 确定图标
   const getIcon = () => {
     if (type === "robot") {
       return robotType === "panda" ? "hand rock" : "android";
-    } else {
-      return sensorType === "sensor_a" ? "wifi" : "rss";
     }
+    return sensorType === "sensor_a" ? "wifi" : "rss";
   };
 
   // 弹出信息内容
@@ -141,9 +130,8 @@ const TaskConfigItem: FC<TaskConfigItemProps> = ({
 
     if (type === "robot") {
       return `${basicInfo}\n类型: ${robotType || "未知"}`;
-    } else {
-      return `${basicInfo}\n类型: ${sensorType || "未知"}`;
     }
+    return `${basicInfo}\n类型: ${sensorType || "未知"}`;
   };
 
   return (

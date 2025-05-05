@@ -5,10 +5,10 @@ export const DeleteZoneContext = createContext<{
   ref: React.RefObject<HTMLDivElement> | null;
   isHovering: boolean;
   setIsHovering: (isHovering: boolean) => void;
-}>({
-  ref: null,
-  isHovering: false,
-  setIsHovering: () => {},
-});
+    }>({
+      ref: null,
+      isHovering: false,
+      setIsHovering: () => {},
+    });
 
 export default DeleteZoneContext;

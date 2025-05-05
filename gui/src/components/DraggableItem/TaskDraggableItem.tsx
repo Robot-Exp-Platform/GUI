@@ -1,7 +1,7 @@
-import React, { FC } from "react";
+import { FC } from "react";
 import { Label, Icon } from "semantic-ui-react";
 import { useDrag } from "react-dnd";
-import { conv_ref } from "~/utils";
+import { convRef } from "~/utils";
 import { RobotType } from "~/types/Robot";
 import { SensorType } from "~/types/Sensor";
 
@@ -30,14 +30,13 @@ const TaskDraggableItem: FC<TaskDraggableItemProps> = ({
   const getIcon = () => {
     if (type === "robot") {
       return specificType === "panda" ? "hand rock" : "android";
-    } else {
-      return specificType === "sensor_a" ? "wifi" : "rss";
     }
+    return specificType === "sensor_a" ? "wifi" : "rss";
   };
 
   return (
     <div
-      ref={conv_ref(drag)}
+      ref={convRef(drag)}
       style={{
         opacity: isDragging ? 0.5 : 1,
         cursor: "move",

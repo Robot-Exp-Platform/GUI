@@ -19,7 +19,7 @@ export interface ProjectConfig {
   sensors: Sensor[];
   tasks: Task[];
   idCounters: IdCounters;
-  task_graph: Array<[string, string]>; // 存储任务依赖关系 [("id1", "id2"), ...] 表示 id1 -> id2
+  taskGraph: Array<[string, string]>; // 存储任务依赖关系 [("id1", "id2"), ...] 表示 id1 -> id2
 }
 
 // 项目类型
@@ -31,7 +31,7 @@ export class Project {
   constructor(
     projectName: string,
     projectPath: string,
-    config?: ProjectConfig
+    config?: ProjectConfig,
   ) {
     this.projectName = projectName;
     this.projectPath = projectPath;
@@ -47,7 +47,7 @@ export class Project {
         sensorBCounter: 0,
         taskCounter: 0,
       },
-      task_graph: [], // 初始化空依赖图
+      taskGraph: [], // 初始化空依赖图
     };
   }
 
@@ -62,7 +62,7 @@ export class Project {
 
       const result = await window.electronAPI.writeProjectConfig(
         configPath,
-        configData
+        configData,
       );
       return result.success;
     } catch (error) {
@@ -78,8 +78,16 @@ export class Project {
       const result = await window.electronAPI.readProjectConfig(configPath);
 
       if (result.success && result.config) {
-        const { projectName, robots, sensors, tasks, idCounters, task_graph } =
-          result.config;
+        const config = result.config;
+        const projectName = config.projectName as string;
+        const robots = config.robots as Robot[] | undefined;
+        const sensors = config.sensors as Sensor[] | undefined;
+        const tasks = config.tasks as Task[] | undefined;
+        const idCounters = config.idCounters as IdCounters | undefined;
+        const taskGraph = config.taskGraph as
+          | Array<[string, string]>
+          | undefined;
+
         return new Project(projectName, projectPath, {
           robots: robots || [],
           sensors: sensors || [],
@@ -92,7 +100,7 @@ export class Project {
             sensorBCounter: 0,
             taskCounter: 0,
           },
-          task_graph: task_graph || [],
+          taskGraph: taskGraph || [],
         });
       }
       return null;
@@ -105,18 +113,18 @@ export class Project {
   // 获取特定类型的下一个计数器值
   getNextTypeCounter(type: CounterType): number {
     switch (type) {
-      case "panda":
-        return ++this.config.idCounters.pandaCounter;
-      case "ur":
-        return ++this.config.idCounters.urCounter;
-      case "sensor_a":
-        return ++this.config.idCounters.sensorACounter;
-      case "sensor_b":
-        return ++this.config.idCounters.sensorBCounter;
-      case "task":
-        return ++this.config.idCounters.taskCounter;
-      default:
-        throw new Error(`未知类型: ${type}`);
+    case "panda":
+      return ++this.config.idCounters.pandaCounter;
+    case "ur":
+      return ++this.config.idCounters.urCounter;
+    case "sensor_a":
+      return ++this.config.idCounters.sensorACounter;
+    case "sensor_b":
+      return ++this.config.idCounters.sensorBCounter;
+    case "task":
+      return ++this.config.idCounters.taskCounter;
+    default:
+      throw new Error(`未知类型: ${type}`);
     }
   }
 
@@ -135,19 +143,25 @@ export class Project {
     const visited = new Set<string>();
 
     const dfs = (currentId: string): boolean => {
-      if (currentId === taskId2) return true;
-      if (visited.has(currentId)) return false;
+      if (currentId === taskId2) {
+        return true;
+      }
+      if (visited.has(currentId)) {
+        return false;
+      }
 
       visited.add(currentId);
 
       // 获取当前任务的所有直接依赖
-      const dependencies = this.config.task_graph
-        .filter(([from, _]) => from === currentId)
-        .map(([_, to]) => to);
+      const dependencies = this.config.taskGraph
+        .filter(([from]) => from === currentId)
+        .map(([, to]) => to);
 
       // 检查每个直接依赖
       for (const dependencyId of dependencies) {
-        if (dfs(dependencyId)) return true;
+        if (dfs(dependencyId)) {
+          return true;
+        }
       }
 
       return false;

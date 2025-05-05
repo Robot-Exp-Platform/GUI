@@ -2,7 +2,7 @@ import { FC } from "react";
 import { Divider } from "semantic-ui-react";
 import { useDrag } from "react-dnd";
 
-import { conv_ref } from "~/utils";
+import { convRef } from "~/utils";
 
 interface DraggableDividerProps {
   onDrag: (deltaY: number) => void;
@@ -25,7 +25,7 @@ const DraggableDivider: FC<DraggableDividerProps> = ({ onDrag }) => {
 
   return (
     <div
-      ref={conv_ref(drag)}
+      ref={convRef(drag)}
       style={{
         cursor: "row-resize",
         padding: "8px 0",
