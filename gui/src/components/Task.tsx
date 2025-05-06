@@ -4,6 +4,8 @@ import "./styles.css";
 import TaskEditor from "./TaskEditor";
 import { useProject } from "~/components/contexts/ProjectContext";
 import { Task as TaskType } from "~/types/Task";
+import { Node } from "~/types/Node"; // 导入 Node 类型
+import { Label } from "semantic-ui-react";
 
 interface TaskProps {
   id: string;
@@ -82,6 +84,13 @@ const Task: React.FC<TaskProps> = ({
   // 获取当前任务对象
   const getTaskById = (numericId: number) =>
     project?.config.tasks.find((task) => task.id === numericId);
+
+  // 获取当前任务的节点列表
+  const getTaskNodes = (): Node[] => {
+    const numericId = parseInt(id, 10);
+    const taskObj = getTaskById(numericId);
+    return taskObj?.nodes || [];
+  };
 
   const [{ isDragging }, drag] = useDrag({
     type: "TASK",
@@ -394,6 +403,15 @@ const Task: React.FC<TaskProps> = ({
             {name}
           </div>
         )}
+
+        {/* 节点标签区域 */}
+        <div className="task-nodes-container">
+          {getTaskNodes().map((node) => (
+            <Label basic key={node.id} className="task-node-label">
+              {node.name}
+            </Label>
+          ))}
+        </div>
 
         <div
           className="task-resize-handle"

@@ -75,6 +75,31 @@
   z-index: 5;
 }
 
+/* 节点标签容器和标签样式 */
+.task-nodes-container {
+  position: relative;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: flex-start;
+  overflow: hidden;
+  max-height: calc(100% - 30px);
+  margin-top: 2px;
+}
+
+.task-node-label {
+  display: inline-block;
+  font-size: 10px;
+  padding: 2px 4px;
+  margin-right: 4px;
+  margin-bottom: 4px;
+  border-radius: 3px;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 /* 循环依赖的任务样式 */
 .task.circular-dependency {
   border-color: #f44336;
