@@ -176,6 +176,7 @@ const ConfigArea: FC = () => {
         <div className="export-container">
           <Button
             primary
+            compact
             className="export-config-button"
             onClick={handleExportConfig}
             loading={isExporting}

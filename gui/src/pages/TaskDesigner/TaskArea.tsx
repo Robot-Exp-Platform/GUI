@@ -838,6 +838,7 @@ const TaskArea: FC = () => {
         )}
         <Button
           primary
+          compact
           disabled={isExporting}
           loading={isExporting}
           onClick={handleExportTaskFile}

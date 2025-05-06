@@ -23,7 +23,7 @@ export const Page: FC<HomeProps> = ({ onNavigate }) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const handleTaskDesignerClick = () => {
+  const handleProjectButtonClick = () => {
     setShowProjectModal(true);
   };
 
@@ -42,7 +42,7 @@ export const Page: FC<HomeProps> = ({ onNavigate }) => {
 
         if (success) {
           setShowProjectModal(false);
-          onNavigate("TaskDesigner");
+          onNavigate("ProjectPage");
         } else {
           setError("加载项目失败");
         }
@@ -71,7 +71,7 @@ export const Page: FC<HomeProps> = ({ onNavigate }) => {
 
         if (success) {
           setShowProjectModal(false);
-          onNavigate("TaskDesigner");
+          onNavigate("ProjectPage");
         } else {
           setError("加载项目失败");
         }
@@ -125,7 +125,7 @@ export const Page: FC<HomeProps> = ({ onNavigate }) => {
 
         if (success) {
           setShowProjectModal(false);
-          onNavigate("TaskDesigner");
+          onNavigate("ProjectPage");
         } else {
           setError("加载项目失败");
         }
@@ -228,12 +228,8 @@ export const Page: FC<HomeProps> = ({ onNavigate }) => {
           width: "100%",
         }}
       >
-        <Button primary onClick={handleTaskDesignerClick}>
-          任务设计器
-        </Button>
-        <div style={{ width: "10%" }}></div>
-        <Button primary onClick={() => onNavigate("UIDesigner")}>
-          界面设计器
+        <Button primary size="large" onClick={handleProjectButtonClick}>
+          选择或新建项目
         </Button>
       </div>
 
