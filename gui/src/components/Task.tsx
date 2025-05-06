@@ -405,8 +405,11 @@ const Task: React.FC<TaskProps> = ({
 
         <div
           id={`anchor-${id}`}
-          className="task-anchor"
+          className={`task-anchor ${
+            isCircularDependency ? "circular-anchor" : ""
+          }`}
           onMouseDown={handleAnchorMouseDown}
+          style={isCircularDependency ? { cursor: "not-allowed" } : undefined}
         />
 
         {isCircularDependency && (

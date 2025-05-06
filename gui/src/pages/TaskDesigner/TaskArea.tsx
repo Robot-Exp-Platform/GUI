@@ -14,11 +14,6 @@ import { useProject } from "~/components/contexts/ProjectContext";
 import Xarrow from "react-xarrows";
 import { createTask } from "~/types/Task"; // 导入createTask函数
 
-// 全局window接口扩展
-interface ExtendedWindow extends Window {
-  __newTaskCreated: string | null;
-}
-
 // 任务依赖连线预览
 interface DependencyLine {
   fromId: string;
@@ -31,7 +26,7 @@ const TaskArea: FC = () => {
 
   // 增强版任务类型，保存完整任务信息
   interface EnhancedTask {
-    id: string; // UI 中显示的 ID
+    id: string; // UI 中显示的 ID，现在直接使用数字ID的字符串表示
     numericId: number; // 实际存储的数字 ID
     position: { x: number; y: number };
     name: string;
@@ -88,12 +83,9 @@ const TaskArea: FC = () => {
       return;
     }
 
-    // 从project.config直接获取任务依赖关系
+    // 从project.config直接获取任务依赖关系，不再添加task-前缀
     setDependencies(
-      project.config.taskGraph.map(([from, to]) => [
-        `task-${from}`,
-        `task-${to}`,
-      ])
+      project.config.taskGraph.map(([from, to]) => [String(from), String(to)])
     );
   }, [project?.config.taskGraph]);
 
@@ -115,7 +107,7 @@ const TaskArea: FC = () => {
       const size = task.size || { width: 120, height: 80 };
 
       return {
-        id: `task-${task.id}`,
+        id: String(task.id), // 直接使用数字ID的字符串表示，不再添加前缀
         numericId: task.id,
         position,
         name: task.name,
@@ -146,16 +138,12 @@ const TaskArea: FC = () => {
         return;
       }
 
-      // 获取所有可能导致循环依赖的目标任务ID
+      // 获取所有可能导致循环依赖的目标任务ID，不再需要移除前缀
       const circularTasks = tasks
         .map((task) => task.id)
         .filter(
           (taskId) =>
-            taskId !== fromTaskId &&
-            checkCircularDependency(
-              fromTaskId.replace("task-", ""),
-              taskId.replace("task-", "")
-            )
+            taskId !== fromTaskId && checkCircularDependency(fromTaskId, taskId)
         );
 
       setCircularDependencyTasks(circularTasks);
@@ -404,8 +392,8 @@ const TaskArea: FC = () => {
 
       // 获取新的任务ID，增加taskCounter计数器
       const numericId = ++project.config.idCounters.taskCounter;
-      // 为了保持一致性，任务ID使用字符串格式
-      const taskId = `task-${numericId}`;
+      // 为了保持一致性，任务ID使用字符串格式，不再添加task-前缀
+      const taskId = String(numericId);
 
       // 创建新任务配置
       const taskConfig = createTask(numericId);
@@ -668,30 +656,55 @@ const TaskArea: FC = () => {
     // 然后清除预览状态
     setDependencyPreview(null);
 
-    // 清除循环依赖任务标记
-    setCircularDependencyTasks([]);
-
     // 如果没有源任务ID或目标任务ID，直接返回
     if (!fromId || !toTaskId) {
+      setCircularDependencyTasks([]);
       return;
     }
 
     // 检查是否是自己连接自己
     if (fromId === toTaskId) {
+      setCircularDependencyTasks([]);
       return;
     }
+
+    // 不再需要移除前缀，直接使用ID
+    const fromNumericId = fromId;
+    const toNumericId = toTaskId;
 
     // 检查是否会产生循环依赖
-    if (circularDependencyTasks.includes(toTaskId)) {
-      // 如果目标任务会导致循环依赖，不执行任何操作
+    console.log("检查循环依赖:", fromId, toTaskId);
+    console.log("循环依赖任务列表:", circularDependencyTasks);
+
+    // 直接从计算好的循环依赖任务列表中检查，这样确保与拖动时的视觉一致
+    const wouldCauseCircularDependency =
+      circularDependencyTasks.includes(toTaskId);
+
+    // 以防万一列表为空但实际有循环依赖，使用 checkCircularDependency 再次验证
+    const confirmedCircularDependency =
+      wouldCauseCircularDependency ||
+      checkCircularDependency(fromNumericId, toNumericId);
+
+    if (confirmedCircularDependency) {
+      // 如果目标任务会导致循环依赖，显示警告并阻止创建依赖关系
+      setCircularDependencyWarning(
+        `不能创建指向 ${toTaskId} 的依赖，会导致循环依赖！`
+      );
+
+      // 设置一个定时器，几秒后自动清除警告
+      setTimeout(() => {
+        setCircularDependencyWarning(null);
+      }, 3000);
+
+      // 清除循环依赖任务标记
+      setCircularDependencyTasks([]);
       return;
     }
 
-    try {
-      // 提取数字ID（去掉"task-"前缀）
-      const fromNumericId = fromId.replace("task-", "");
-      const toNumericId = toTaskId.replace("task-", "");
+    // 清除循环依赖任务标记
+    setCircularDependencyTasks([]);
 
+    try {
       // 检查是否已存在相同的依赖关系
       const exists = project.config.taskGraph.some(
         ([from, to]) => from === fromNumericId && to === toNumericId
