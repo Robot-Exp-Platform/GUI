@@ -29,4 +29,8 @@ contextBridge.exposeInMainWorld("electronAPI", {
   // 导出配置文件
   exportConfigFile: (projectPath, configData) =>
     ipcRenderer.invoke("export-config-file", projectPath, configData),
+    
+  // 导出任务文件
+  exportTaskFile: (projectPath, taskData) =>
+    ipcRenderer.invoke("export-task-file", projectPath, taskData),
 });

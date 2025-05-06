@@ -8,7 +8,7 @@ export interface Task {
   target?: unknown[]; // 目标配置，使用unknown类型以支持各种JSON结构
   nodes?: Node[]; // 节点配置
   nodeCounter?: number; // 节点计数器，用于生成节点默认名称
-  edges?: [string, string][]; // 节点间的通信信道
+  edges?: [number, number][]; // 节点间的通信信道，使用节点ID标识
 }
 
 // 创建一个任务实例

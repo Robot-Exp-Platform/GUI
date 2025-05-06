@@ -74,6 +74,43 @@
   left: 1rem;
 }
 
+/* 任务区标题栏样式 */
+.task-area-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 16px;
+  background-color: #f9f9f9;
+  border-bottom: 1px solid #ddd;
+  position: relative;
+}
+
+.task-area-header h3 {
+  margin: 0;
+  font-size: 16px;
+  flex-grow: 1;
+}
+
+/* 导出任务文件按钮样式 */
+.task-area-header .ui.button {
+  margin-left: 10px;
+  font-size: 14px;
+  padding: 8px 16px;
+}
+
+/* 导出消息样式 */
+.task-area-header .ui.message {
+  position: absolute;
+  top: 100%;
+  right: 16px;
+  margin: 5px 0 0 0;
+  padding: 8px 16px;
+  z-index: 10;
+  font-size: 14px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  max-width: 400px;
+}
+
 .task-area-header {
   padding: 0 0 10px 5px;
   border-bottom: 1px solid #e0e0e0;
@@ -283,6 +320,12 @@
 }
 
 /* 循环依赖警告样式 */
+.circular-dependency-warning {
+  color: #db2828;
+  font-weight: bold;
+  margin-left: 20px;
+}
+
 .circular-dependency-warning {
   color: red;
   background-color: #ffeeee;

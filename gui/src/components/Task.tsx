@@ -272,8 +272,8 @@ const Task: React.FC<TaskProps> = ({
   // 保存任务更改
   const handleSaveTask = async (updatedTask: TaskType) => {
     try {
-      // 获取任务ID（去除"task-"前缀）
-      const numericId = parseInt(id.replace("task-", ""), 10);
+      // 获取任务ID（不再使用字符串前缀）
+      const numericId = parseInt(id, 10);
 
       if (!project) {
         console.error("项目未加载，无法保存任务");
@@ -286,10 +286,12 @@ const Task: React.FC<TaskProps> = ({
       );
 
       if (taskIndex !== -1) {
-        // 更新名称、target和nodes字段，保留其他属性不变
+        // 更新名称、target、nodes和nodeCounter字段，保留其他属性不变
         project.config.tasks[taskIndex].name = updatedTask.name;
         project.config.tasks[taskIndex].target = updatedTask.target;
         project.config.tasks[taskIndex].nodes = updatedTask.nodes;
+        project.config.tasks[taskIndex].nodeCounter = updatedTask.nodeCounter;
+        project.config.tasks[taskIndex].edges = updatedTask.edges;
 
         // 保存项目
         await project.save();

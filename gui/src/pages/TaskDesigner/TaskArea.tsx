@@ -6,6 +6,7 @@ import React, {
   useEffect,
   useCallback,
 } from "react";
+import { Button, Message } from "semantic-ui-react"; // 添加 Button 和 Message 组件
 import "./styles.css";
 import Task from "~/components/Task";
 import { convRef } from "~/utils";
@@ -13,6 +14,7 @@ import DeleteZoneContext from "~/components/contexts/DeleteZoneContext";
 import { useProject } from "~/components/contexts/ProjectContext";
 import Xarrow from "react-xarrows";
 import { createTask } from "~/types/Task"; // 导入createTask函数
+import { Node } from "~/types/Node";
 
 // 任务依赖连线预览
 interface DependencyLine {
@@ -23,6 +25,13 @@ interface DependencyLine {
 
 const TaskArea: FC = () => {
   const { project, updateProject } = useProject();
+
+  // 添加导出任务文件状态
+  const [isExporting, setIsExporting] = useState(false);
+  const [exportMessage, setExportMessage] = useState<{
+    type: "success" | "error";
+    content: string;
+  } | null>(null);
 
   // 增强版任务类型，保存完整任务信息
   interface EnhancedTask {
@@ -725,6 +734,99 @@ const TaskArea: FC = () => {
     }
   };
 
+  // 导出任务文件
+  const handleExportTaskFile = useCallback(async () => {
+    if (!project) {
+      setExportMessage({
+        type: "error",
+        content: "没有打开的项目，无法导出任务文件",
+      });
+      return;
+    }
+
+    try {
+      setIsExporting(true);
+      setExportMessage(null);
+
+      // 准备导出的任务数据
+      const exportTaskData = project.config.tasks.map((task) => {
+        // 查找此任务的依赖关系
+        const rely = project.config.taskGraph
+          .filter(([from, to]) => to === task.id.toString())
+          .map(([from, to]) => parseInt(from));
+
+        // 将节点中的edges格式从[nodeId, nodeId]转换为[nodeIndex, nodeIndex]
+        const edgesIndices =
+          task.edges?.map(([sourceId, targetId]) => {
+            // 构建节点ID到索引的映射
+            const idToIndex: Map<number, number> = new Map();
+
+            // 特殊处理0（表示target）
+            idToIndex.set(0, 0);
+
+            // 为其他节点创建映射
+            task.nodes?.forEach((node, index) => {
+              idToIndex.set(node.id, index + 1); // 索引从1开始
+            });
+
+            const sourceIndex = idToIndex.get(sourceId) || 0;
+            const targetIndex = idToIndex.get(targetId) || 0;
+
+            return [sourceIndex, targetIndex];
+          }) || [];
+
+        // 构造简化的节点信息，只包含需要的字段
+        const simplifiedNodes =
+          task.nodes?.map((node) => ({
+            node_type: node.node_type,
+            robots: node.robots,
+            sensors: node.sensors,
+            params: node.params,
+          })) || [];
+
+        return {
+          id: task.id,
+          rely,
+          target: task.target || [],
+          nodes: simplifiedNodes,
+          edges: edgesIndices,
+        };
+      });
+
+      // 调用导出API
+      const result = await window.electronAPI.exportTaskFile(
+        project.projectPath,
+        exportTaskData
+      );
+
+      if (result.success) {
+        setExportMessage({
+          type: "success",
+          content: `任务文件已成功导出到: ${result.filePath}`,
+        });
+
+        // 5秒后自动清除成功消息
+        setTimeout(() => {
+          setExportMessage(null);
+        }, 5000);
+      } else {
+        setExportMessage({
+          type: "error",
+          content: result.error || "导出失败，请重试",
+        });
+      }
+    } catch (error) {
+      console.error("导出任务文件失败:", error);
+      setExportMessage({
+        type: "error",
+        content:
+          error instanceof Error ? error.message : "导出过程中发生未知错误",
+      });
+    } finally {
+      setIsExporting(false);
+    }
+  }, [project]);
+
   return (
     <div className="task-area">
       <div className="task-area-header">
@@ -733,6 +835,22 @@ const TaskArea: FC = () => {
           <div className="circular-dependency-warning">
             {circularDependencyWarning}
           </div>
+        )}
+        <Button
+          primary
+          disabled={isExporting}
+          loading={isExporting}
+          onClick={handleExportTaskFile}
+        >
+          导出任务文件
+        </Button>
+        {exportMessage && (
+          <Message
+            positive={exportMessage.type === "success"}
+            negative={exportMessage.type === "error"}
+          >
+            {exportMessage.content}
+          </Message>
         )}
       </div>
       <div

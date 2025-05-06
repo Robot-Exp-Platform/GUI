@@ -230,6 +230,27 @@ app.whenReady().then(() => {
       }
     }
   );
+
+  // 导出任务文件
+  ipcMain.handle(
+    "export-task-file",
+    async (event, projectPath, taskData) => {
+      try {
+        const taskFilePath = path.join(projectPath, "task.json");
+        // 写入格式化的JSON文件（含有缩进和换行，便于阅读）
+        fs.writeFileSync(taskFilePath, JSON.stringify(taskData, null, 2));
+        return { 
+          success: true,
+          filePath: taskFilePath
+        };
+      } catch (err) {
+        return {
+          success: false,
+          error: `导出任务文件失败: ${err.message}`,
+        };
+      }
+    }
+  );
 });
 
 app.on("window-all-closed", () => {

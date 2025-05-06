@@ -57,6 +57,16 @@ interface ElectronAPI {
     filePath?: string;
     error?: string;
   }>;
+  
+  // 新增：导出任务文件
+  exportTaskFile: (
+    projectPath: string,
+    taskData: Record<string, unknown>[] | any[]
+  ) => Promise<{
+    success: boolean;
+    filePath?: string;
+    error?: string;
+  }>;
 }
 
 interface Window {

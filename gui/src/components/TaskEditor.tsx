@@ -43,7 +43,7 @@ const TaskEditor: React.FC<TaskEditorProps> = ({
   const [target, setTarget] = useState<string>("");
   const [nodes, setNodes] = useState<Node[]>([]);
   const [nodeCounter, setNodeCounter] = useState<number>(0);
-  const [edges, setEdges] = useState<[string, string][]>([]);
+  const [edges, setEdges] = useState<[number, number][]>([]);
   const [newEdgeSource, setNewEdgeSource] = useState<string>("");
   const [newEdgeTarget, setNewEdgeTarget] = useState<string>("");
   const [edgeError, setEdgeError] = useState<string | null>(null);
@@ -64,8 +64,8 @@ const TaskEditor: React.FC<TaskEditorProps> = ({
   const [saveSuccess, setSaveSuccess] = useState<boolean>(false);
 
   // 从项目参数中获取所有可用的机器人和传感器
-  const availableRobots = project?.config?.robots || [];
-  const availableSensors = project?.config?.sensors || [];
+  const availableRobots = project?.config?.robots;
+  const availableSensors = project?.config?.sensors;
 
   // 当task属性变化时更新表单状态
   useEffect(() => {
@@ -81,12 +81,50 @@ const TaskEditor: React.FC<TaskEditorProps> = ({
     }
   }, [open]);
 
+  // 将edges从[nodeId, nodeId][]格式转换为[nodeIndex, nodeIndex][]格式（用于JSON编辑模式）
+  const convertEdgesToIndices = (
+    edges: [number, number][],
+    nodes: Node[]
+  ): [number, number][] => {
+    return edges.map(([sourceId, targetId]) => {
+      // 源节点ID为0表示特殊节点target，保持为0
+      const sourceIndex =
+        sourceId === 0
+          ? 0
+          : nodes.findIndex((node) => node.id === sourceId) + 1;
+
+      // 目标节点ID为0表示特殊节点target，保持为0
+      const targetIndex =
+        targetId === 0
+          ? 0
+          : nodes.findIndex((node) => node.id === targetId) + 1;
+
+      return [sourceIndex, targetIndex];
+    });
+  };
+
+  // 将edges从[nodeIndex, nodeIndex][]格式转换回[nodeId, nodeId][]格式（从JSON编辑模式保存）
+  const convertIndicesToEdges = (
+    indices: [number, number][],
+    nodes: Node[]
+  ): [number, number][] => {
+    return indices.map(([sourceIndex, targetIndex]) => {
+      // 源节点索引为0表示特殊节点target，保持为0
+      const sourceId = sourceIndex === 0 ? 0 : nodes[sourceIndex - 1]?.id || 0;
+
+      // 目标节点索引为0表示特殊节点target，保持为0
+      const targetId = targetIndex === 0 ? 0 : nodes[targetIndex - 1]?.id || 0;
+
+      return [sourceId, targetId];
+    });
+  };
+
   // 重置表单为原始状态
   const resetFormToOriginal = () => {
     setName(task.name);
     try {
       // 将目标对象转换为格式化的 JSON 字符串
-      setTarget(JSON.stringify(task.target || [], null, 2));
+      setTarget(JSON.stringify(task.target, null, 2));
     } catch (_) {
       setTarget("[]");
     }
@@ -111,7 +149,8 @@ const TaskEditor: React.FC<TaskEditorProps> = ({
       target: task.target || [],
       nodes: task.nodes || [],
       nodeCounter: task.nodeCounter || 0,
-      edges: task.edges || [],
+      // 对于JSON编辑模式，需要将edges从[nodeId, nodeId][]格式转换为[nodeIndex, nodeIndex][]格式
+      edges: convertEdgesToIndices(task.edges || [], task.nodes || []),
     };
     setJsonText(formatJsonCompact(jsonObj));
   };
@@ -180,16 +219,16 @@ const TaskEditor: React.FC<TaskEditorProps> = ({
   };
 
   // 检查信道是否已存在
-  const isEdgeExists = (source: string, target: string): boolean => {
+  const isEdgeExists = (sourceId: number, targetId: number): boolean => {
     return edges.some(
       ([s, t]) =>
-        (s === source && t === target) || (s === target && t === source)
+        (s === sourceId && t === targetId) || (s === targetId && t === sourceId)
     );
   };
 
   // 检查信道是否有效(不连接到相同的节点)
-  const isValidEdge = (source: string, target: string): boolean => {
-    return source !== target;
+  const isValidEdge = (sourceId: number, targetId: number): boolean => {
+    return sourceId !== targetId;
   };
 
   // 添加信道
@@ -210,20 +249,24 @@ const TaskEditor: React.FC<TaskEditorProps> = ({
       return;
     }
 
+    // 将选择的名称转换为节点ID
+    const sourceId = newEdgeSource === "0" ? 0 : Number(newEdgeSource);
+    const targetId = newEdgeTarget === "0" ? 0 : Number(newEdgeTarget);
+
     // 检查是否连接到相同的节点
-    if (!isValidEdge(newEdgeSource, newEdgeTarget)) {
+    if (!isValidEdge(sourceId, targetId)) {
       setEdgeError("信道不能连接到同一个节点");
       return;
     }
 
     // 检查信道是否已存在
-    if (isEdgeExists(newEdgeSource, newEdgeTarget)) {
+    if (isEdgeExists(sourceId, targetId)) {
       setEdgeError("该信道已存在");
       return;
     }
 
     // 添加新信道
-    setEdges([...edges, [newEdgeSource, newEdgeTarget]]);
+    setEdges([...edges, [sourceId, targetId]]);
 
     // 清空选择
     setNewEdgeSource("");
@@ -256,7 +299,7 @@ const TaskEditor: React.FC<TaskEditorProps> = ({
   // JSON模式下验证edges
   const validateEdgesInJsonMode = (
     parsedJson: any
-  ): [string, string][] | null => {
+  ): [number, number][] | null => {
     // 验证edges是否是数组
     if (!Array.isArray(parsedJson.edges)) {
       setError("edges必须是一个数组");
@@ -264,7 +307,7 @@ const TaskEditor: React.FC<TaskEditorProps> = ({
     }
 
     // 解析后的edges数组
-    const parsedEdges: [string, string][] = [];
+    const parsedEdges: [number, number][] = [];
 
     // 遍历所有信道
     for (let i = 0; i < parsedJson.edges.length; i++) {
@@ -288,24 +331,24 @@ const TaskEditor: React.FC<TaskEditorProps> = ({
       const nodesLength = parsedJson.nodes ? parsedJson.nodes.length : 0;
 
       // 源节点或目标节点为0表示特殊节点target
-      let sourceName: string;
+      let sourceId: number;
       if (sourceIndex === 0) {
-        sourceName = "0"; // 特殊节点target
+        sourceId = 0; // 特殊节点target
       } else if (sourceIndex < 0 || sourceIndex > nodesLength) {
         setError(`信道 ${i + 1}: 源节点索引超出范围`);
         return null;
       } else {
-        sourceName = parsedJson.nodes[sourceIndex - 1].name;
+        sourceId = parsedJson.nodes[sourceIndex - 1].id;
       }
 
-      let targetName: string;
+      let targetId: number;
       if (targetIndex === 0) {
-        targetName = "0"; // 特殊节点target
+        targetId = 0; // 特殊节点target
       } else if (targetIndex < 0 || targetIndex > nodesLength) {
         setError(`信道 ${i + 1}: 目标节点索引超出范围`);
         return null;
       } else {
-        targetName = parsedJson.nodes[targetIndex - 1].name;
+        targetId = parsedJson.nodes[targetIndex - 1].id;
       }
 
       // 检查是否连接相同节点
@@ -318,8 +361,8 @@ const TaskEditor: React.FC<TaskEditorProps> = ({
       if (
         parsedEdges.some(
           ([s, t]) =>
-            (s === sourceName && t === targetName) ||
-            (s === targetName && t === sourceName)
+            (s === sourceId && t === targetId) ||
+            (s === targetId && t === sourceId)
         )
       ) {
         setError(`信道 ${i + 1}: 与已有信道重复`);
@@ -327,7 +370,7 @@ const TaskEditor: React.FC<TaskEditorProps> = ({
       }
 
       // 添加到解析后的数组
-      parsedEdges.push([sourceName, targetName]);
+      parsedEdges.push([sourceId, targetId]);
     }
 
     return parsedEdges;
@@ -370,11 +413,11 @@ const TaskEditor: React.FC<TaskEditorProps> = ({
 
   // 添加新节点
   const handleAddNode = () => {
-    // 增加节点计数器并使用它生成默认节点名称
+    // 增加节点计数器并使用它生成默认节点名称和作为节点ID
     const nextCounter = nodeCounter + 1;
     setNodeCounter(nextCounter);
 
-    const newNode = createNode(`节点 ${nextCounter}`);
+    const newNode = createNode(`节点 ${nextCounter}`, nextCounter);
     setNodes([...nodes, newNode]);
     setActiveNodeIndex(nodes.length);
 
@@ -384,8 +427,8 @@ const TaskEditor: React.FC<TaskEditorProps> = ({
 
   // 删除节点
   const handleDeleteNode = (index: number) => {
-    // 获取要删除的节点名称
-    const deletingNodeName = nodes[index].name;
+    // 获取要删除的节点ID
+    const deletingNodeId = nodes[index].id;
 
     // 删除节点
     const newNodes = [...nodes];
@@ -394,8 +437,8 @@ const TaskEditor: React.FC<TaskEditorProps> = ({
 
     // 删除所有与该节点相关的信道
     const newEdges = edges.filter(
-      ([source, target]) =>
-        source !== deletingNodeName && target !== deletingNodeName
+      ([sourceId, targetId]) =>
+        sourceId !== deletingNodeId && targetId !== deletingNodeId
     );
     setEdges(newEdges);
 
@@ -606,11 +649,69 @@ const TaskEditor: React.FC<TaskEditorProps> = ({
             }
           }
 
-          // 验证edges
-          const parsedEdges = validateEdgesInJsonMode(parsedJson);
-          if (parsedEdges === null) {
-            setIsSaving(false);
-            return;
+          // 验证edges并将其从索引格式转换为ID格式
+          if (Array.isArray(parsedJson.edges)) {
+            // 先验证edges格式是否正确
+            for (let i = 0; i < parsedJson.edges.length; i++) {
+              const edge = parsedJson.edges[i];
+
+              // 检查edge是否是长度为2的数组
+              if (!Array.isArray(edge) || edge.length !== 2) {
+                setError(
+                  `信道 ${i + 1}: 格式无效，应为 [源节点索引, 目标节点索引]`
+                );
+                setIsSaving(false);
+                return;
+              }
+
+              const [sourceIndex, targetIndex] = edge;
+
+              // 检查sourceIndex和targetIndex是否是数字
+              if (
+                typeof sourceIndex !== "number" ||
+                typeof targetIndex !== "number"
+              ) {
+                setError(`信道 ${i + 1}: 节点索引必须是数字`);
+                setIsSaving(false);
+                return;
+              }
+
+              // 验证索引范围
+              const nodesLength = parsedJson.nodes
+                ? parsedJson.nodes.length
+                : 0;
+
+              // 索引为0表示特殊节点target，或者索引必须在有效范围内
+              if (
+                sourceIndex !== 0 &&
+                (sourceIndex < 1 || sourceIndex > nodesLength)
+              ) {
+                setError(`信道 ${i + 1}: 源节点索引超出范围`);
+                setIsSaving(false);
+                return;
+              }
+              if (
+                targetIndex !== 0 &&
+                (targetIndex < 1 || targetIndex > nodesLength)
+              ) {
+                setError(`信道 ${i + 1}: 目标节点索引超出范围`);
+                setIsSaving(false);
+                return;
+              }
+
+              // 检查是否连接相同节点
+              if (sourceIndex === targetIndex) {
+                setError(`信道 ${i + 1}: 不能连接相同的节点`);
+                setIsSaving(false);
+                return;
+              }
+            }
+
+            // 将edges从索引格式[nodeIndex, nodeIndex][]转换为ID格式[nodeId, nodeId][]
+            parsedJson.edges = convertIndicesToEdges(
+              parsedJson.edges,
+              parsedJson.nodes || []
+            );
           }
 
           // 检查名称是否重复
@@ -626,7 +727,7 @@ const TaskEditor: React.FC<TaskEditorProps> = ({
             target: parsedJson.target || [],
             nodes: parsedJson.nodes || [],
             nodeCounter: parsedJson.nodeCounter || nodeCounter,
-            edges: parsedEdges,
+            edges: parsedJson.edges || [],
           };
         } catch (err) {
           if (err instanceof Error) {
@@ -799,13 +900,14 @@ const TaskEditor: React.FC<TaskEditorProps> = ({
       setIsJsonMode(false);
       resetFormToOriginal();
     } else {
-      // 从表单模式切换到JSON模式，放弃未保存的表单编辑
+      // 从表单模式切换到JSON模式，将当前表单数据转换为JSON
+      // 对于JSON编辑模式，需要将edges从[nodeId, nodeId][]格式转换为[nodeIndex, nodeIndex][]格式
       const jsonObj = {
-        name: task.name,
-        target: task.target || [],
-        nodes: task.nodes || [],
-        nodeCounter: task.nodeCounter || 0,
-        edges: task.edges || [],
+        name,
+        target: validateTarget(target) || [],
+        nodes,
+        nodeCounter,
+        edges: convertEdgesToIndices(edges, nodes),
       };
       setJsonText(formatJsonCompact(jsonObj));
       setIsJsonMode(true);
@@ -1122,7 +1224,7 @@ const TaskEditor: React.FC<TaskEditorProps> = ({
                         ...nodes.map((node, index) => ({
                           key: index,
                           text: node.name,
-                          value: node.name,
+                          value: node.id.toString(),
                         })),
                       ]}
                       value={newEdgeSource}
@@ -1147,7 +1249,7 @@ const TaskEditor: React.FC<TaskEditorProps> = ({
                         ...nodes.map((node, index) => ({
                           key: index,
                           text: node.name,
-                          value: node.name,
+                          value: node.id.toString(),
                         })),
                       ]}
                       value={newEdgeTarget}

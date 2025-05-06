@@ -174,14 +174,6 @@ const ConfigArea: FC = () => {
       <div className="config-area-header">
         <h3>配置区（拖入机器人和传感器）</h3>
         <div className="export-container">
-          {exportMessage?.type === "success" && (
-            <div className="export-success-message">
-              <div>配置文件已成功导出</div>
-              <div className="export-success-path">
-                {exportMessage.content.split(": ")[1]}
-              </div>
-            </div>
-          )}
           <Button
             primary
             className="export-config-button"
@@ -193,9 +185,10 @@ const ConfigArea: FC = () => {
           </Button>
         </div>
       </div>
-      {exportMessage?.type === "error" && (
+      {exportMessage && (
         <Message
-          negative
+          positive={exportMessage.type === "success"}
+          negative={exportMessage.type === "error"}
           onDismiss={() => setExportMessage(null)}
           content={exportMessage.content}
         />
