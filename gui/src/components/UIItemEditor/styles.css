@@ -1,0 +1,29 @@
+/* 颜色选择器容器 */
+.color-picker-container {
+  display: flex;
+  align-items: center;
+}
+
+/* 颜色显示块 */
+.color-display {
+  width: 100px;
+  height: 24px;
+  margin-right: 10px;
+}
+
+/* 颜色选择器弹出层容器 */
+.color-picker-popup {
+  position: absolute;
+  z-index: 2;
+  margin-left: 140px;
+  margin-top: -200px;
+}
+
+/* 颜色选择器弹出层背景遮罩 */
+.color-picker-overlay {
+  position: fixed;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
+}

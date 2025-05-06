@@ -67,6 +67,29 @@ interface ElectronAPI {
     filePath?: string;
     error?: string;
   }>;
+
+  // 新增：读取 UI 设计文件
+  readUIFile: (filePath: string) => Promise<{
+    success: boolean;
+    design?: Record<string, unknown>;
+    error?: string;
+  }>;
+
+  // 新增：写入 UI 设计文件
+  writeUIFile: (
+    filePath: string,
+    designData: Record<string, unknown>
+  ) => Promise<{
+    success: boolean;
+    error?: string;
+  }>;
+
+  // 新增：选择图片文件
+  selectImageFile: () => Promise<{
+    success: boolean;
+    filePath?: string;
+    error?: string;
+  }>;
 }
 
 interface Window {

@@ -251,6 +251,76 @@ app.whenReady().then(() => {
       }
     }
   );
+
+  // 读取UI设计文件
+  ipcMain.handle("read-ui-file", async (event, filePath) => {
+    try {
+      if (!fs.existsSync(filePath)) {
+        return {
+          success: false,
+          error: "UI设计文件不存在",
+        };
+      }
+
+      const designData = JSON.parse(fs.readFileSync(filePath, "utf8"));
+      return {
+        success: true,
+        design: designData,
+      };
+    } catch (err) {
+      return {
+        success: false,
+        error: `读取UI设计失败: ${err.message}`,
+      };
+    }
+  });
+
+  // 写入UI设计文件
+  ipcMain.handle(
+    "write-ui-file",
+    async (event, filePath, designData) => {
+      try {
+        // 确保目录存在
+        const dir = path.dirname(filePath);
+        if (!fs.existsSync(dir)) {
+          fs.mkdirSync(dir, { recursive: true });
+        }
+        
+        fs.writeFileSync(filePath, JSON.stringify(designData, null, 2));
+        return { success: true };
+      } catch (err) {
+        return {
+          success: false,
+          error: `保存UI设计失败: ${err.message}`,
+        };
+      }
+    }
+  );
+
+  // 选择图片文件
+  ipcMain.handle("select-image-file", async () => {
+    const { canceled, filePaths } = await dialog.showOpenDialog(win, {
+      properties: ["openFile"],
+      filters: [
+        { name: "图片文件", extensions: ["jpg", "jpeg", "png", "gif", "bmp", "svg"] }
+      ]
+    });
+    
+    if (canceled) return { success: false };
+    
+    try {
+      const filePath = filePaths[0];
+      return {
+        success: true,
+        filePath: filePath
+      };
+    } catch (err) {
+      return {
+        success: false,
+        error: `选择图片失败: ${err.message}`,
+      };
+    }
+  });
 });
 
 app.on("window-all-closed", () => {

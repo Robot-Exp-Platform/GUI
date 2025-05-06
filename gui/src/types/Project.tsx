@@ -2,6 +2,7 @@ import { Robot } from "./Robot";
 import { Sensor } from "./Sensor";
 import { Task } from "./Task";
 import { CounterType } from "./index";
+import { UIDesign } from "./UI";
 
 // 项目ID计数器类型
 export interface IdCounters {
@@ -11,6 +12,14 @@ export interface IdCounters {
   sensorACounter: number;
   sensorBCounter: number;
   taskCounter: number;
+  uiCounter: number;
+}
+
+// UI文件信息
+export interface UIFile {
+  id: string;
+  name: string;
+  path: string;
 }
 
 // 项目配置类型
@@ -18,6 +27,7 @@ export interface ProjectConfig {
   robots: Robot[];
   sensors: Sensor[];
   tasks: Task[];
+  uiFiles: UIFile[];
   idCounters: IdCounters;
   taskGraph: Array<[string, string]>; // 存储任务依赖关系 [("id1", "id2"), ...] 表示 id1 -> id2
 }
@@ -39,6 +49,7 @@ export class Project {
       robots: [],
       sensors: [],
       tasks: [],
+      uiFiles: [],
       idCounters: {
         nextId: 1,
         pandaCounter: 0,
@@ -46,6 +57,7 @@ export class Project {
         sensorACounter: 0,
         sensorBCounter: 0,
         taskCounter: 0,
+        uiCounter: 0,
       },
       taskGraph: [], // 初始化空依赖图
     };
@@ -83,6 +95,7 @@ export class Project {
         const robots = config.robots as Robot[] | undefined;
         const sensors = config.sensors as Sensor[] | undefined;
         const tasks = config.tasks as Task[] | undefined;
+        const uiFiles = config.uiFiles as UIFile[] | undefined;
         const idCounters = config.idCounters as IdCounters | undefined;
         const taskGraph = config.taskGraph as
           | Array<[string, string]>
@@ -92,6 +105,7 @@ export class Project {
           robots: robots || [],
           sensors: sensors || [],
           tasks: tasks || [],
+          uiFiles: uiFiles || [],
           idCounters: idCounters || {
             nextId: 1,
             pandaCounter: 0,
@@ -99,6 +113,7 @@ export class Project {
             sensorACounter: 0,
             sensorBCounter: 0,
             taskCounter: 0,
+            uiCounter: 0,
           },
           taskGraph: taskGraph || [],
         });
@@ -123,6 +138,8 @@ export class Project {
       return ++this.config.idCounters.sensorBCounter;
     case "task":
       return ++this.config.idCounters.taskCounter;
+    case "ui":
+      return ++this.config.idCounters.uiCounter;
     default:
       throw new Error(`未知类型: ${type}`);
     }
@@ -168,5 +185,55 @@ export class Project {
     };
 
     return dfs(taskId1);
+  }
+
+  // 添加UI文件
+  addUIFile(name: string, path: string): UIFile {
+    const id = `ui_${this.getNextTypeCounter("ui")}`;
+    const uiFile = {
+      id,
+      name,
+      path,
+    };
+    this.config.uiFiles.push(uiFile);
+    return uiFile;
+  }
+
+  // 删除UI文件
+  removeUIFile(id: string): boolean {
+    const index = this.config.uiFiles.findIndex(file => file.id === id);
+    if (index !== -1) {
+      this.config.uiFiles.splice(index, 1);
+      return true;
+    }
+    return false;
+  }
+
+  // 保存UI设计到文件
+  async saveUIDesign(uiDesign: UIDesign, filePath: string): Promise<boolean> {
+    try {
+      const result = await window.electronAPI.writeUIFile(
+        filePath,
+        uiDesign
+      );
+      return result.success;
+    } catch (error) {
+      console.error("保存UI设计失败:", error);
+      return false;
+    }
+  }
+
+  // 从文件加载UI设计
+  async loadUIDesign(filePath: string): Promise<UIDesign | null> {
+    try {
+      const result = await window.electronAPI.readUIFile(filePath);
+      if (result.success && result.design) {
+        return result.design as UIDesign;
+      }
+      return null;
+    } catch (error) {
+      console.error("加载UI设计失败:", error);
+      return null;
+    }
   }
 }

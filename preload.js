@@ -33,4 +33,16 @@ contextBridge.exposeInMainWorld("electronAPI", {
   // 导出任务文件
   exportTaskFile: (projectPath, taskData) =>
     ipcRenderer.invoke("export-task-file", projectPath, taskData),
+
+  // UI设计器相关API
+  // 读取UI设计文件
+  readUIFile: (filePath) => 
+    ipcRenderer.invoke("read-ui-file", filePath),
+  
+  // 写入UI设计文件
+  writeUIFile: (filePath, designData) =>
+    ipcRenderer.invoke("write-ui-file", filePath, designData),
+  
+  // 选择图片文件
+  selectImageFile: () => ipcRenderer.invoke("select-image-file"),
 });
