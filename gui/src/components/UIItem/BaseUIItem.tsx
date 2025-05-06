@@ -30,10 +30,8 @@ export const BaseUIItem: React.FC<BaseUIItemProps> = ({
   } = useUIDesigner();
 
   const isSelected = selectedItem?.id === item.id;
-  const [showAnchor, setShowAnchor] = useState(false);
   const shapeRef = useRef<any>(null);
   const trRef = useRef<any>(null);
-  const anchorRef = useRef<any>(null);
 
   // 右键菜单
   const { show } = useContextMenu({
@@ -48,7 +46,6 @@ export const BaseUIItem: React.FC<BaseUIItemProps> = ({
 
     selectItem(item.id);
     moveToTop(item.id);
-    setShowAnchor(true);
   };
 
   // 处理拖拽
@@ -77,32 +74,6 @@ export const BaseUIItem: React.FC<BaseUIItemProps> = ({
       width: Math.max(5, node.width() * scaleX),
       height: Math.max(5, node.height() * scaleY),
       rotation: node.rotation(),
-    });
-  };
-
-  // 处理旋转点拖拽
-  const handleAnchorDragMove = (e: KonvaEventObject<DragEvent>) => {
-    if (!shapeRef.current) return;
-
-    const shape = shapeRef.current;
-    const centerX = shape.x();
-    const centerY = shape.y();
-
-    const anchorX = e.target.x();
-    const anchorY = e.target.y();
-
-    // 计算角度
-    const angle =
-      (Math.atan2(anchorY - centerY, anchorX - centerX) * 180) / Math.PI;
-
-    shape.rotation(angle + 90);
-  };
-
-  // 处理旋转完成
-  const handleAnchorDragEnd = () => {
-    if (!shapeRef.current) return;
-    updateItem(item.id, {
-      rotation: shapeRef.current.rotation(),
     });
   };
 
@@ -141,6 +112,10 @@ export const BaseUIItem: React.FC<BaseUIItemProps> = ({
     }
   }, [isSelected]);
 
+  // 计算组件中心点位置
+  const centerX = item.width / 2;
+  const centerY = item.height / 2;
+
   return (
     <>
       <Group>
@@ -150,6 +125,8 @@ export const BaseUIItem: React.FC<BaseUIItemProps> = ({
           width={item.width}
           height={item.height}
           rotation={item.rotation}
+          offsetX={centerX} // 设置旋转中心为组件宽度的一半
+          offsetY={centerY} // 设置旋转中心为组件高度的一半
           draggable
           onClick={handleSelect}
           onTap={handleSelect}
@@ -160,31 +137,11 @@ export const BaseUIItem: React.FC<BaseUIItemProps> = ({
           {children}
         </Group>
 
-        {isSelected && showAnchor && (
-          <Group>
-            {/* 旋转锚点 */}
-            <Group
-              x={item.x}
-              y={item.y - 30}
-              draggable
-              onDragMove={handleAnchorDragMove}
-              onDragEnd={handleAnchorDragEnd}
-              ref={anchorRef}
-            >
-              <Circle
-                radius={8}
-                fill="#4285f4"
-                stroke="#ffffff"
-                strokeWidth={1}
-              />
-              <Line points={[0, 0, 0, 30]} stroke="#4285f4" strokeWidth={1} />
-            </Group>
-          </Group>
-        )}
-
         {isSelected && (
           <Transformer
             ref={trRef}
+            rotateEnabled={true}
+            rotationSnaps={[0, 45, 90, 135, 180, 225, 270, 315]}
             boundBoxFunc={(oldBox, newBox) => {
               // 限制最小尺寸
               if (newBox.width < 5 || newBox.height < 5) {
@@ -204,7 +161,3 @@ export const BaseUIItem: React.FC<BaseUIItemProps> = ({
     </>
   );
 };
-
-// 这些是BaseUIItem内部使用的Konva组件
-// 由于我们在UIItem组件中使用react-konva，这里直接从react-konva导入
-import { Circle, Line } from "react-konva";

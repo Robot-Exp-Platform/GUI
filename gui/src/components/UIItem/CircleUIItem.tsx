@@ -1,5 +1,5 @@
 import React from "react";
-import { Circle } from "react-konva";
+import { Ellipse } from "react-konva";
 import { UICircleItem } from "~/types/UI";
 import { BaseUIItem } from "./BaseUIItem";
 
@@ -8,17 +8,17 @@ interface CircleUIItemProps {
 }
 
 export const CircleUIItem: React.FC<CircleUIItemProps> = ({ item }) => {
-  // 使用宽度或高度中较小的值作为半径
-  const radius = Math.min(item.width, item.height) / 2;
+  // 使用宽度和高度的一半分别作为椭圆的x半径和y半径
+  const radiusX = item.width / 2;
+  const radiusY = item.height / 2;
 
   return (
     <BaseUIItem item={item}>
-      <Circle
+      <Ellipse
         fill={item.fill}
-        radius={radius}
-        // 将圆形定位在中心点
-        offsetX={-radius}
-        offsetY={-radius}
+        radiusX={radiusX}
+        radiusY={radiusY}
+        // Ellipse在Konva中默认就是以中心点定位的，不需要调整offset
       />
     </BaseUIItem>
   );
