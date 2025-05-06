@@ -8,6 +8,7 @@ export interface Task {
   target?: unknown[]; // 目标配置，使用unknown类型以支持各种JSON结构
   nodes?: Node[]; // 节点配置
   nodeCounter?: number; // 节点计数器，用于生成节点默认名称
+  edges?: [string, string][]; // 节点间的通信信道
 }
 
 // 创建一个任务实例
@@ -19,4 +20,5 @@ export const createTask = (id: number): Task => ({
   target: [], // 默认空数组
   nodes: [], // 默认空节点数组
   nodeCounter: 0, // 初始化节点计数器为0
+  edges: [], // 默认空信道数组
 });

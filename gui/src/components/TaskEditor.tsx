@@ -43,6 +43,10 @@ const TaskEditor: React.FC<TaskEditorProps> = ({
   const [target, setTarget] = useState<string>("");
   const [nodes, setNodes] = useState<Node[]>([]);
   const [nodeCounter, setNodeCounter] = useState<number>(0);
+  const [edges, setEdges] = useState<[string, string][]>([]);
+  const [newEdgeSource, setNewEdgeSource] = useState<string>("");
+  const [newEdgeTarget, setNewEdgeTarget] = useState<string>("");
+  const [edgeError, setEdgeError] = useState<string | null>(null);
   const [activeNodeIndex, setActiveNodeIndex] = useState<number | null>(null);
 
   // 错误状态
@@ -90,12 +94,14 @@ const TaskEditor: React.FC<TaskEditorProps> = ({
     // 设置节点数组和节点计数器
     setNodes(task.nodes || []);
     setNodeCounter(task.nodeCounter || 0);
+    setEdges(task.edges || []);
     setActiveNodeIndex(null);
 
     // 清除所有错误状态
     setTargetError(null);
     setNameError(null);
     setNodeErrors({});
+    setEdgeError(null);
     setError(null);
     setSaveSuccess(false);
 
@@ -105,6 +111,7 @@ const TaskEditor: React.FC<TaskEditorProps> = ({
       target: task.target || [],
       nodes: task.nodes || [],
       nodeCounter: task.nodeCounter || 0,
+      edges: task.edges || [],
     };
     setJsonText(formatJsonCompact(jsonObj));
   };
@@ -172,6 +179,160 @@ const TaskEditor: React.FC<TaskEditorProps> = ({
     }
   };
 
+  // 检查信道是否已存在
+  const isEdgeExists = (source: string, target: string): boolean => {
+    return edges.some(
+      ([s, t]) =>
+        (s === source && t === target) || (s === target && t === source)
+    );
+  };
+
+  // 检查信道是否有效(不连接到相同的节点)
+  const isValidEdge = (source: string, target: string): boolean => {
+    return source !== target;
+  };
+
+  // 添加信道
+  const handleAddEdge = () => {
+    // 清除之前的错误信息
+    setEdgeError(null);
+    setSaveSuccess(false);
+    setError(null);
+
+    // 检查是否已选择源节点和目标节点
+    if (!newEdgeSource) {
+      setEdgeError("请选择源节点");
+      return;
+    }
+
+    if (!newEdgeTarget) {
+      setEdgeError("请选择目标节点");
+      return;
+    }
+
+    // 检查是否连接到相同的节点
+    if (!isValidEdge(newEdgeSource, newEdgeTarget)) {
+      setEdgeError("信道不能连接到同一个节点");
+      return;
+    }
+
+    // 检查信道是否已存在
+    if (isEdgeExists(newEdgeSource, newEdgeTarget)) {
+      setEdgeError("该信道已存在");
+      return;
+    }
+
+    // 添加新信道
+    setEdges([...edges, [newEdgeSource, newEdgeTarget]]);
+
+    // 清空选择
+    setNewEdgeSource("");
+    setNewEdgeTarget("");
+  };
+
+  // 删除信道
+  const handleDeleteEdge = (index: number) => {
+    const newEdges = [...edges];
+    newEdges.splice(index, 1);
+    setEdges(newEdges);
+
+    // 清除可能存在的错误信息
+    setEdgeError(null);
+    setSaveSuccess(false);
+  };
+
+  // 处理源节点选择变化
+  const handleEdgeSourceChange = (value: string) => {
+    setNewEdgeSource(value);
+    setEdgeError(null);
+  };
+
+  // 处理目标节点选择变化
+  const handleEdgeTargetChange = (value: string) => {
+    setNewEdgeTarget(value);
+    setEdgeError(null);
+  };
+
+  // JSON模式下验证edges
+  const validateEdgesInJsonMode = (
+    parsedJson: any
+  ): [string, string][] | null => {
+    // 验证edges是否是数组
+    if (!Array.isArray(parsedJson.edges)) {
+      setError("edges必须是一个数组");
+      return null;
+    }
+
+    // 解析后的edges数组
+    const parsedEdges: [string, string][] = [];
+
+    // 遍历所有信道
+    for (let i = 0; i < parsedJson.edges.length; i++) {
+      const edge = parsedJson.edges[i];
+
+      // 检查edge是否是长度为2的数组
+      if (!Array.isArray(edge) || edge.length !== 2) {
+        setError(`信道 ${i + 1}: 格式无效，应为 [源节点索引, 目标节点索引]`);
+        return null;
+      }
+
+      const [sourceIndex, targetIndex] = edge;
+
+      // 检查sourceIndex和targetIndex是否是数字
+      if (typeof sourceIndex !== "number" || typeof targetIndex !== "number") {
+        setError(`信道 ${i + 1}: 节点索引必须是数字`);
+        return null;
+      }
+
+      // 验证索引范围
+      const nodesLength = parsedJson.nodes ? parsedJson.nodes.length : 0;
+
+      // 源节点或目标节点为0表示特殊节点target
+      let sourceName: string;
+      if (sourceIndex === 0) {
+        sourceName = "0"; // 特殊节点target
+      } else if (sourceIndex < 0 || sourceIndex > nodesLength) {
+        setError(`信道 ${i + 1}: 源节点索引超出范围`);
+        return null;
+      } else {
+        sourceName = parsedJson.nodes[sourceIndex - 1].name;
+      }
+
+      let targetName: string;
+      if (targetIndex === 0) {
+        targetName = "0"; // 特殊节点target
+      } else if (targetIndex < 0 || targetIndex > nodesLength) {
+        setError(`信道 ${i + 1}: 目标节点索引超出范围`);
+        return null;
+      } else {
+        targetName = parsedJson.nodes[targetIndex - 1].name;
+      }
+
+      // 检查是否连接相同节点
+      if (sourceIndex === targetIndex) {
+        setError(`信道 ${i + 1}: 不能连接相同的节点`);
+        return null;
+      }
+
+      // 检查信道是否重复
+      if (
+        parsedEdges.some(
+          ([s, t]) =>
+            (s === sourceName && t === targetName) ||
+            (s === targetName && t === sourceName)
+        )
+      ) {
+        setError(`信道 ${i + 1}: 与已有信道重复`);
+        return null;
+      }
+
+      // 添加到解析后的数组
+      parsedEdges.push([sourceName, targetName]);
+    }
+
+    return parsedEdges;
+  };
+
   // 处理焦点事件，清除成功消息但保留错误信息直到用户修改
   const handleFieldFocus = (fieldName: string) => {
     setFocusedField(fieldName);
@@ -223,9 +384,21 @@ const TaskEditor: React.FC<TaskEditorProps> = ({
 
   // 删除节点
   const handleDeleteNode = (index: number) => {
+    // 获取要删除的节点名称
+    const deletingNodeName = nodes[index].name;
+
+    // 删除节点
     const newNodes = [...nodes];
     newNodes.splice(index, 1);
     setNodes(newNodes);
+
+    // 删除所有与该节点相关的信道
+    const newEdges = edges.filter(
+      ([source, target]) =>
+        source !== deletingNodeName && target !== deletingNodeName
+    );
+    setEdges(newEdges);
+
     setActiveNodeIndex(null);
 
     // 清除此节点相关的错误
@@ -364,6 +537,16 @@ const TaskEditor: React.FC<TaskEditorProps> = ({
             return;
           }
 
+          // 验证edges是数组
+          if (
+            parsedJson.edges !== undefined &&
+            !Array.isArray(parsedJson.edges)
+          ) {
+            setError("edges必须是一个数组");
+            setIsSaving(false);
+            return;
+          }
+
           // 验证nodes中的每个节点
           if (parsedJson.nodes) {
             // 收集所有节点名称，用于检查重复
@@ -423,6 +606,13 @@ const TaskEditor: React.FC<TaskEditorProps> = ({
             }
           }
 
+          // 验证edges
+          const parsedEdges = validateEdgesInJsonMode(parsedJson);
+          if (parsedEdges === null) {
+            setIsSaving(false);
+            return;
+          }
+
           // 检查名称是否重复
           if (checkDuplicateName(parsedJson.name, task.id)) {
             setError("名称已被使用，请使用不同的名称");
@@ -436,6 +626,7 @@ const TaskEditor: React.FC<TaskEditorProps> = ({
             target: parsedJson.target || [],
             nodes: parsedJson.nodes || [],
             nodeCounter: parsedJson.nodeCounter || nodeCounter,
+            edges: parsedEdges,
           };
         } catch (err) {
           if (err instanceof Error) {
@@ -549,6 +740,7 @@ const TaskEditor: React.FC<TaskEditorProps> = ({
           target: parsedTarget,
           nodes,
           nodeCounter, // 保存节点计数器
+          edges,
         };
       }
 
@@ -568,6 +760,7 @@ const TaskEditor: React.FC<TaskEditorProps> = ({
         setTarget(JSON.stringify(updatedTask.target || [], null, 2));
         setNodes(updatedTask.nodes || []);
         setNodeCounter(updatedTask.nodeCounter || 0);
+        setEdges(updatedTask.edges || []);
 
         // 更新JSON文本
         const jsonObj = {
@@ -575,6 +768,7 @@ const TaskEditor: React.FC<TaskEditorProps> = ({
           target: updatedTask.target,
           nodes: updatedTask.nodes,
           nodeCounter: updatedTask.nodeCounter,
+          edges: updatedTask.edges,
         };
         setJsonText(formatJsonCompact(jsonObj));
 
@@ -583,6 +777,7 @@ const TaskEditor: React.FC<TaskEditorProps> = ({
         task.target = updatedTask.target;
         task.nodes = updatedTask.nodes;
         task.nodeCounter = updatedTask.nodeCounter;
+        task.edges = updatedTask.edges;
       } else {
         setError("保存失败，请重试");
       }
@@ -610,6 +805,7 @@ const TaskEditor: React.FC<TaskEditorProps> = ({
         target: task.target || [],
         nodes: task.nodes || [],
         nodeCounter: task.nodeCounter || 0,
+        edges: task.edges || [],
       };
       setJsonText(formatJsonCompact(jsonObj));
       setIsJsonMode(true);
@@ -704,33 +900,21 @@ const TaskEditor: React.FC<TaskEditorProps> = ({
                 </span>
               ))}
             </div>
-            <Button
+            <Dropdown
+              button
+              className="icon"
+              labeled
               icon="add"
-              content={
+              text={
                 availableRobotsForNode.length > 0
                   ? "添加机器人"
                   : "当前无可用机器人"
               }
               disabled={availableRobotsForNode.length === 0}
-              onClick={(e) => {
-                e.preventDefault();
-                if (availableRobotsForNode.length > 0) {
-                  // 显示下拉菜单
-                  const dropdown = document.getElementById(
-                    `robot-dropdown-${index}`
-                  );
-                  if (dropdown) dropdown.click();
-                }
-                // 点击按钮时也清除提示信息
+              onClick={() => {
                 handleFieldFocus(`robots_${index}`);
+                setSaveSuccess(false);
               }}
-            />
-            <Dropdown
-              id={`robot-dropdown-${index}`}
-              style={{ display: "none" }}
-              icon={null}
-              floating
-              className="icon"
             >
               <Dropdown.Menu>
                 {availableRobotsForNode.map((robot: Robot) => (
@@ -739,7 +923,6 @@ const TaskEditor: React.FC<TaskEditorProps> = ({
                     text={robot.name}
                     onClick={() => {
                       handleAddRobot(index, robot.name);
-                      // 选择机器人时也清除提示信息
                       handleFieldFocus(`robots_${index}`);
                     }}
                   />
@@ -761,33 +944,21 @@ const TaskEditor: React.FC<TaskEditorProps> = ({
                 </span>
               ))}
             </div>
-            <Button
+            <Dropdown
+              button
+              className="icon"
+              labeled
               icon="add"
-              content={
+              text={
                 availableSensorsForNode.length > 0
                   ? "添加传感器"
                   : "当前无可用传感器"
               }
               disabled={availableSensorsForNode.length === 0}
-              onClick={(e) => {
-                e.preventDefault();
-                if (availableSensorsForNode.length > 0) {
-                  // 显示下拉菜单
-                  const dropdown = document.getElementById(
-                    `sensor-dropdown-${index}`
-                  );
-                  if (dropdown) dropdown.click();
-                }
-                // 点击按钮时也清除提示信息
+              onClick={() => {
                 handleFieldFocus(`sensors_${index}`);
+                setSaveSuccess(false);
               }}
-            />
-            <Dropdown
-              id={`sensor-dropdown-${index}`}
-              style={{ display: "none" }}
-              icon={null}
-              floating
-              className="icon"
             >
               <Dropdown.Menu>
                 {availableSensorsForNode.map((sensor: Sensor) => (
@@ -796,7 +967,6 @@ const TaskEditor: React.FC<TaskEditorProps> = ({
                     text={sensor.name}
                     onClick={() => {
                       handleAddSensor(index, sensor.name);
-                      // 选择传感器时也清除提示信息
                       handleFieldFocus(`sensors_${index}`);
                     }}
                   />
@@ -925,6 +1095,93 @@ const TaskEditor: React.FC<TaskEditorProps> = ({
                     </div>
                   )}
                 </Accordion>
+              </Segment>
+
+              <Segment>
+                <Header as="h5">
+                  信道配置
+                  <Button
+                    icon="add"
+                    content="添加信道"
+                    size="mini"
+                    primary
+                    floated="right"
+                    onClick={handleAddEdge}
+                    style={{ marginTop: "-5px" }}
+                  />
+                </Header>
+                <Form.Group widths="equal">
+                  <Form.Field error={!!edgeError}>
+                    <label>源节点</label>
+                    <Dropdown
+                      placeholder="选择源节点"
+                      fluid
+                      selection
+                      options={[
+                        { key: "target", text: "目标", value: "0" },
+                        ...nodes.map((node, index) => ({
+                          key: index,
+                          text: node.name,
+                          value: node.name,
+                        })),
+                      ]}
+                      value={newEdgeSource}
+                      onChange={(e, { value }) =>
+                        handleEdgeSourceChange(value as string)
+                      }
+                      onFocus={() => {
+                        handleFieldFocus("edge_source");
+                        setEdgeError(null);
+                        setSaveSuccess(false);
+                      }}
+                    />
+                  </Form.Field>
+                  <Form.Field error={!!edgeError}>
+                    <label>目标节点</label>
+                    <Dropdown
+                      placeholder="选择目标节点"
+                      fluid
+                      selection
+                      options={[
+                        { key: "target", text: "目标", value: "0" },
+                        ...nodes.map((node, index) => ({
+                          key: index,
+                          text: node.name,
+                          value: node.name,
+                        })),
+                      ]}
+                      value={newEdgeTarget}
+                      onChange={(e, { value }) =>
+                        handleEdgeTargetChange(value as string)
+                      }
+                      onFocus={() => {
+                        handleFieldFocus("edge_target");
+                        setEdgeError(null);
+                        setSaveSuccess(false);
+                      }}
+                    />
+                  </Form.Field>
+                </Form.Group>
+                {edgeError && <div className="error-text">{edgeError}</div>}
+                <div className="edges-list">
+                  {edges.map(([source, target], index) => (
+                    <div key={index} className="edge-item">
+                      <span>{`${source} -> ${target}`}</span>
+                      <Button
+                        icon="trash"
+                        size="mini"
+                        negative
+                        floated="right"
+                        onClick={() => handleDeleteEdge(index)}
+                      />
+                    </div>
+                  ))}
+                  {edges.length === 0 && (
+                    <div className="no-edges-message">
+                      还没有信道，点击"添加信道"按钮创建一个新信道
+                    </div>
+                  )}
+                </div>
               </Segment>
             </Form>
           )}
