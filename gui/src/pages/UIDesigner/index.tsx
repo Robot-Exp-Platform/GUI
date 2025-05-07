@@ -24,12 +24,14 @@ import {
   TriangleUIItem,
   ImageUIItem,
   CaptureUIItem,
+  CameraUIItem,
 } from "~/components/UIItem";
 import {
   TextUIItemEditor,
   ImageUIItemEditor,
   ShapeUIItemEditor,
   CaptureUIItemEditor,
+  CameraUIItemEditor,
 } from "~/components/UIItemEditor";
 
 import "./styles.css";
@@ -230,6 +232,21 @@ const UIDesignerContent: FC = () => {
     });
   };
 
+  const handleAddCamera = () => {
+    addItem({
+      type: "camera",
+      x: 50,
+      y: 50,
+      width: 320,
+      height: 240,
+      rotation: 0,
+      fill: "#262626",
+      deviceId: "",
+      deviceName: "",
+      hasSignal: false,
+    });
+  };
+
   const handleSaveUI = async () => {
     try {
       const success = await saveUIDesign();
@@ -256,6 +273,8 @@ const UIDesignerContent: FC = () => {
       case "circle":
       case "triangle":
         return <ShapeUIItemEditor item={selectedItem} />;
+      case "camera":
+        return <CameraUIItemEditor item={selectedItem} />;
       default:
         return null;
     }
@@ -282,6 +301,8 @@ const UIDesignerContent: FC = () => {
           return <TriangleUIItem key={item.id} item={item} />;
         case "capture":
           return <CaptureUIItem key={item.id} item={item} />;
+        case "camera":
+          return <CameraUIItem key={item.id} item={item} />;
         default:
           return null;
       }
@@ -397,6 +418,13 @@ const UIDesignerContent: FC = () => {
                 <List.Description>添加窗口捕获</List.Description>
               </List.Content>
             </List.Item>
+            <List.Item as="a" onClick={handleAddCamera}>
+              <List.Icon name="video camera" size="large" verticalAlign="middle" />
+              <List.Content>
+                <List.Header>摄像头</List.Header>
+                <List.Description>添加摄像头捕获</List.Description>
+              </List.Content>
+            </List.Item>
           </List>
         </Segment>
 
@@ -450,6 +478,8 @@ const UIDesignerContent: FC = () => {
                   ? "三角形"
                   : selectedItem.type === "capture"
                   ? "窗口捕获"
+                  : selectedItem.type === "camera"
+                  ? "摄像头"
                   : "组件"}
               </Header>
               {renderEditor()}

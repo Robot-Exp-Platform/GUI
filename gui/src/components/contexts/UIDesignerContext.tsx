@@ -8,6 +8,7 @@ import {
   UICircleItem,
   UITriangleItem,
   UICaptureItem,
+  UICameraItem,
 } from "~/types/UI";
 import { useProject } from "./ProjectContext";
 import { v4 as uuidv4 } from "uuid";
@@ -19,7 +20,8 @@ type AddUIItemParams =
   | Omit<UIRectangleItem, "id" | "zIndex">
   | Omit<UICircleItem, "id" | "zIndex">
   | Omit<UITriangleItem, "id" | "zIndex">
-  | Omit<UICaptureItem, "id" | "zIndex">;
+  | Omit<UICaptureItem, "id" | "zIndex">
+  | Omit<UICameraItem, "id" | "zIndex">;
 
 interface UIDesignerContextType {
   currentUI: UIDesign | null;

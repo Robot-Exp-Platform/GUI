@@ -55,4 +55,11 @@ contextBridge.exposeInMainWorld("electronAPI", {
   
   // 检查窗口是否仍然存在
   checkWindowExists: (sourceId) => ipcRenderer.invoke("check-window-exists", sourceId),
+
+  // 摄像头相关API
+  // 获取系统摄像头列表
+  getCameraSources: () => ipcRenderer.invoke("get-camera-sources"),
+
+  // 开始捕获摄像头
+  startCameraCapture: (deviceId) => ipcRenderer.invoke("start-camera-capture", deviceId),
 });

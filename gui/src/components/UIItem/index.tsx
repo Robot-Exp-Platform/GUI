@@ -4,4 +4,5 @@ export * from "./RectangleUIItem";
 export * from "./CircleUIItem";
 export * from "./TriangleUIItem";
 export * from "./CaptureUIItem";
+export * from "./CameraUIItem";
 export * from "./BaseUIItem";

@@ -449,6 +449,51 @@ app.whenReady().then(() => {
       };
     }
   });
+
+  // 获取系统摄像头列表
+  ipcMain.handle("get-camera-sources", async () => {
+    try {
+      // 需要注意，在Electron主进程中无法直接访问navigator.mediaDevices API
+      // 因此我们返回一个临时响应，实际的摄像头列表由渲染进程通过浏览器API获取
+      return {
+        success: true,
+        sources: [
+          {
+            id: "default_camera",
+            name: "默认摄像头",
+            deviceId: "default"
+          }
+        ]
+      };
+    } catch (error) {
+      console.error('获取摄像头列表失败:', error);
+      return {
+        success: false,
+        error: `获取摄像头列表失败: ${error.message}`
+      };
+    }
+  });
+
+  // 开始捕获摄像头（这个API实际上只返回相关信息，实际捕获在渲染进程中进行）
+  ipcMain.handle("start-camera-capture", async (event, deviceId) => {
+    try {
+      // 实际的媒体捕获将在渲染进程中通过navigator.mediaDevices.getUserMedia完成
+      // 这里只返回一个成功信号
+      return {
+        success: true,
+        source: {
+          id: deviceId || "default",
+          name: deviceId ? `摄像头 (${deviceId})` : "默认摄像头"
+        }
+      };
+    } catch (error) {
+      console.error('启动摄像头捕获失败:', error);
+      return {
+        success: false,
+        error: `启动摄像头捕获失败: ${error.message}`
+      };
+    }
+  });
 });
 
 app.on("window-all-closed", () => {

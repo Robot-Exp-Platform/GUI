@@ -121,6 +121,27 @@ interface ElectronAPI {
     exists?: boolean;
     error?: string;
   }>;
+
+  // 新增：获取系统摄像头列表
+  getCameraSources: () => Promise<{
+    success: boolean;
+    sources?: Array<{
+      id: string;
+      name: string;
+      deviceId: string;
+    }>;
+    error?: string;
+  }>;
+  
+  // 新增：开始捕获摄像头
+  startCameraCapture: (deviceId: string) => Promise<{
+    success: boolean;
+    source?: {
+      id: string;
+      name: string;
+    };
+    error?: string;
+  }>;  
 }
 
 interface Window {

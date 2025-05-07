@@ -1,7 +1,7 @@
 // UI 组件基础类型
 export interface UIBaseItem {
   id: string;
-  type: "text" | "image" | "rectangle" | "circle" | "triangle" | "capture";
+  type: "text" | "image" | "rectangle" | "circle" | "triangle" | "capture" | "camera";
   x: number;
   y: number;
   width: number;
@@ -49,6 +49,14 @@ export interface UICaptureItem extends UIBaseItem {
   hasSignal: boolean;
 }
 
+// 摄像头捕获组件
+export interface UICameraItem extends UIBaseItem {
+  type: "camera";
+  deviceId: string;
+  deviceName: string;
+  hasSignal: boolean;
+}
+
 // UI组件联合类型
 export type UIItem =
   | UITextItem
@@ -56,7 +64,8 @@ export type UIItem =
   | UIRectangleItem
   | UICircleItem
   | UITriangleItem
-  | UICaptureItem;
+  | UICaptureItem
+  | UICameraItem;
 
 // UI设计文件
 export interface UIDesign {
