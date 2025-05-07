@@ -47,6 +47,7 @@ export interface UICaptureItem extends UIBaseItem {
   windowId: string;
   windowTitle: string;
   hasSignal: boolean;
+  frames?: number; // 每秒渲染的帧数，默认为1
 }
 
 // 摄像头捕获组件
@@ -55,6 +56,7 @@ export interface UICameraItem extends UIBaseItem {
   deviceId: string;
   deviceName: string;
   hasSignal: boolean;
+  frames?: number; // 每秒渲染的帧数，默认为1
 }
 
 // UI组件联合类型

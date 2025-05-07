@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { Form, Dropdown, Button, Message, Icon } from "semantic-ui-react";
+import { Form, Dropdown, Button, Message, Icon, Input, Label } from "semantic-ui-react";
 import { UICaptureItem } from "~/types/UI";
 import { useUIDesigner } from "~/components/contexts/UIDesignerContext";
 import "./styles.css";
@@ -28,6 +28,16 @@ interface WindowSource {
 
 // 需要过滤的无效源名称列表
 const FILTERED_SOURCE_NAMES = ["AsHotplugCtrl", "AsHDRControl"];
+
+// 可用的帧率选项
+const framesOptions = [
+  { key: '1', text: '1 帧/秒', value: 1 },
+  { key: '5', text: '5 帧/秒', value: 5 },
+  { key: '10', text: '10 帧/秒', value: 10 },
+  { key: '15', text: '15 帧/秒', value: 15 },
+  { key: '30', text: '30 帧/秒', value: 30 },
+  { key: '60', text: '60 帧/秒', value: 60 },
+];
 
 export const CaptureUIItemEditor: React.FC<CaptureUIItemEditorProps> = ({
   item,
@@ -125,6 +135,14 @@ export const CaptureUIItemEditor: React.FC<CaptureUIItemEditorProps> = ({
     }
   };
 
+  // 更新帧率设置
+  const handleFramesChange = (_e: any, data: any) => {
+    const framesValue = data.value;
+    updateItem(item.id, {
+      frames: framesValue
+    });
+  };
+
   // 刷新窗口列表
   const handleRefresh = () => {
     loadAvailableWindows();
@@ -151,6 +169,18 @@ export const CaptureUIItemEditor: React.FC<CaptureUIItemEditorProps> = ({
         </div>
       </Form.Field>
 
+      <Form.Field>
+        <label>画面刷新频率</label>
+        <Dropdown
+          placeholder="选择刷新频率"
+          fluid
+          selection
+          options={framesOptions}
+          value={item.frames || 1}
+          onChange={handleFramesChange}
+        />
+      </Form.Field>
+
       {errorMessage && (
         <Message negative>
           <Message.Header>错误</Message.Header>
@@ -160,7 +190,7 @@ export const CaptureUIItemEditor: React.FC<CaptureUIItemEditorProps> = ({
 
       <Message info>
         <Message.Header>窗口捕获</Message.Header>
-        <p>选择一个窗口进行实时捕获。如果窗口被关闭，将显示"无信号"。</p>
+        <p>选择一个窗口进行实时捕获。如果窗口被关闭，将显示"无信号"。可调整刷新频率以平衡性能和画面流畅度。</p>
       </Message>
     </Form>
   );

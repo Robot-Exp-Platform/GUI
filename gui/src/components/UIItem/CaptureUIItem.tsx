@@ -10,7 +10,10 @@ interface CaptureUIItemProps {
 }
 
 // 窗口捕获组件，实时显示另一个窗口的画面，类似OBS
-export const CaptureUIItem: React.FC<CaptureUIItemProps> = ({ item, isRunMode }) => {
+export const CaptureUIItem: React.FC<CaptureUIItemProps> = ({
+  item,
+  isRunMode,
+}) => {
   const [isActive, setIsActive] = useState(item.hasSignal);
   const [windowTitle, setWindowTitle] = useState(item.windowTitle);
   const [captureError, setCaptureError] = useState(false);
@@ -19,7 +22,7 @@ export const CaptureUIItem: React.FC<CaptureUIItemProps> = ({ item, isRunMode })
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const imageRef = useRef<HTMLImageElement | null>(null);
   const animFrameRef = useRef<number | null>(null);
-  const checkWindowIntervalRef = useRef<number | null>(null);
+  const renderIntervalRef = useRef<number | null>(null);
   const [videoReady, setVideoReady] = useState(false);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
 
@@ -83,10 +86,10 @@ export const CaptureUIItem: React.FC<CaptureUIItemProps> = ({ item, isRunMode })
         cancelAnimationFrame(animFrameRef.current);
       }
 
-      // 清除检查窗口状态的定时器
-      if (checkWindowIntervalRef.current) {
-        clearInterval(checkWindowIntervalRef.current);
-        checkWindowIntervalRef.current = null;
+      // 清除渲染定时器
+      if (renderIntervalRef.current) {
+        clearInterval(renderIntervalRef.current);
+        renderIntervalRef.current = null;
       }
 
       // 移除创建的DOM元素
@@ -155,7 +158,7 @@ export const CaptureUIItem: React.FC<CaptureUIItemProps> = ({ item, isRunMode })
         setVideoReady(true);
         setCaptureError(false);
 
-        // 开始渲染循环
+        // 开始渲染循环，使用基于frames的控制
         startRenderLoop(adjusted.width, adjusted.height);
       };
 
@@ -176,23 +179,41 @@ export const CaptureUIItem: React.FC<CaptureUIItemProps> = ({ item, isRunMode })
   const startRenderLoop = (width: number, height: number) => {
     if (!videoRef.current || !canvasRef.current || !imageRef.current) return;
 
-    const video = videoRef.current;
     const canvas = canvasRef.current;
-    const ctx = canvas.getContext("2d", { willReadFrequently: true, alpha: true });
+    const ctx = canvas.getContext("2d", {
+      willReadFrequently: true,
+      alpha: true,
+    });
     if (!ctx) return;
 
     // 设置canvas大小与适应后的视频尺寸匹配
     canvas.width = width;
     canvas.height = height;
 
-    // 设置渲染循环
+    // 清除旧的渲染循环
+    if (renderIntervalRef.current) {
+      clearInterval(renderIntervalRef.current);
+      renderIntervalRef.current = null;
+    }
+    if (animFrameRef.current) {
+      cancelAnimationFrame(animFrameRef.current);
+      animFrameRef.current = null;
+    }
+
+    // 计算渲染间隔，默认为1帧/秒
+    const fps = item.frames || 1;
+    const interval = Math.floor(1000 / fps);
+
+    // 渲染函数
     const renderFrame = () => {
+      const video = videoRef.current;
+
       if (!video || !ctx || !imageRef.current) return;
 
       try {
         // 清除之前的内容，使用透明背景
         ctx.clearRect(0, 0, canvas.width, canvas.height);
-        
+
         // 计算源视频绘制区域，避免拉伸
         const videoAspect = video.videoWidth / video.videoHeight;
         const canvasAspect = canvas.width / canvas.height;
@@ -207,17 +228,16 @@ export const CaptureUIItem: React.FC<CaptureUIItemProps> = ({ item, isRunMode })
 
         // 将canvas转换为图像数据 - 使用PNG格式以保持透明度
         imageRef.current.src = canvas.toDataURL("image/png");
-
-        // 继续渲染下一帧
-        animFrameRef.current = requestAnimationFrame(renderFrame);
       } catch (err) {
-        // 捕获任何绘制错误，但继续尝试渲染
+        // 捕获任何绘制错误
         console.error("渲染视频帧错误:", err);
-        animFrameRef.current = requestAnimationFrame(renderFrame);
       }
     };
 
-    // 开始渲染
+    // 设置定时渲染
+    renderIntervalRef.current = window.setInterval(renderFrame, interval);
+
+    // 立即执行一次渲染
     renderFrame();
   };
 
@@ -255,26 +275,30 @@ export const CaptureUIItem: React.FC<CaptureUIItemProps> = ({ item, isRunMode })
       // 开始捕获
       startCapturingWindow(item.windowId);
 
-      // 定期检查窗口是否仍然存在，减少检查频率以降低CPU使用率
-      checkWindowIntervalRef.current = window.setInterval(() => {
+      // 每10秒检查一次窗口是否存在
+      const checkInterval = window.setInterval(() => {
         checkWindowExists(item.windowId);
-      }, 10000); // 每10秒检查一次
+      }, 10000);
+
+      return () => {
+        clearInterval(checkInterval);
+      };
     } else {
       setIsActive(false);
     }
-
-    return () => {
-      if (checkWindowIntervalRef.current !== null) {
-        clearInterval(checkWindowIntervalRef.current);
-        checkWindowIntervalRef.current = null;
-      }
-    };
   }, [item.windowId, item.hasSignal]);
 
   // 处理窗口标题变化
   useEffect(() => {
     setWindowTitle(item.windowTitle);
   }, [item.windowTitle]);
+
+  // 当帧率变化时重新启动渲染循环
+  useEffect(() => {
+    if (videoReady && isActive) {
+      startRenderLoop(adjustedDimensions.width, adjustedDimensions.height);
+    }
+  }, [item.frames]);
 
   // 当组件尺寸变化时重新计算视频尺寸
   useEffect(() => {
@@ -290,9 +314,6 @@ export const CaptureUIItem: React.FC<CaptureUIItemProps> = ({ item, isRunMode })
 
       // 如果视频已经准备好，重新开始渲染
       if (videoReady) {
-        if (animFrameRef.current) {
-          cancelAnimationFrame(animFrameRef.current);
-        }
         startRenderLoop(adjusted.width, adjusted.height);
       }
     }

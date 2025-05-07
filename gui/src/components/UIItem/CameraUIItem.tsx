@@ -20,6 +20,7 @@ export const CameraUIItem: React.FC<CameraUIItemProps> = ({
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const imageRef = useRef<HTMLImageElement | null>(null);
   const animFrameRef = useRef<number | null>(null);
+  const renderIntervalRef = useRef<number | null>(null);
   const [videoReady, setVideoReady] = useState(false);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
 
@@ -81,6 +82,12 @@ export const CameraUIItem: React.FC<CameraUIItemProps> = ({
       // 停止动画帧
       if (animFrameRef.current) {
         cancelAnimationFrame(animFrameRef.current);
+      }
+
+      // 清除渲染定时器
+      if (renderIntervalRef.current) {
+        clearInterval(renderIntervalRef.current);
+        renderIntervalRef.current = null;
       }
 
       // 移除创建的DOM元素
@@ -181,7 +188,6 @@ export const CameraUIItem: React.FC<CameraUIItemProps> = ({
   const startRenderLoop = (width: number, height: number) => {
     if (!videoRef.current || !canvasRef.current || !imageRef.current) return;
 
-    const video = videoRef.current;
     const canvas = canvasRef.current;
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
@@ -190,8 +196,24 @@ export const CameraUIItem: React.FC<CameraUIItemProps> = ({
     canvas.width = width;
     canvas.height = height;
 
-    // 设置渲染循环
+    // 清除旧的渲染循环
+    if (renderIntervalRef.current) {
+      clearInterval(renderIntervalRef.current);
+      renderIntervalRef.current = null;
+    }
+    if (animFrameRef.current) {
+      cancelAnimationFrame(animFrameRef.current);
+      animFrameRef.current = null;
+    }
+
+    // 计算渲染间隔，默认为1帧/秒
+    const fps = item.frames || 1;
+    const interval = Math.floor(1000 / fps);
+
+    // 渲染函数
     const renderFrame = () => {
+      const video = videoRef.current;
+
       if (!video || !ctx || !imageRef.current) return;
 
       try {
@@ -203,16 +225,15 @@ export const CameraUIItem: React.FC<CameraUIItemProps> = ({
 
         // 将canvas转换为图像数据
         imageRef.current.src = canvas.toDataURL("image/webp");
-
-        // 继续渲染下一帧
-        animFrameRef.current = requestAnimationFrame(renderFrame);
       } catch (err) {
         console.error("渲染视频帧错误:", err);
-        animFrameRef.current = requestAnimationFrame(renderFrame);
       }
     };
 
-    // 开始渲染
+    // 设置定时渲染
+    renderIntervalRef.current = window.setInterval(renderFrame, interval);
+
+    // 立即执行一次渲染
     renderFrame();
   };
 
@@ -234,6 +255,13 @@ export const CameraUIItem: React.FC<CameraUIItemProps> = ({
     setDeviceName(item.deviceName);
   }, [item.deviceName]);
 
+  // 当帧率变化时重新启动渲染循环
+  useEffect(() => {
+    if (videoReady && isActive) {
+      startRenderLoop(adjustedDimensions.width, adjustedDimensions.height);
+    }
+  }, [item.frames]);
+
   // 当组件尺寸变化时重新计算视频尺寸
   useEffect(() => {
     if (videoDimensions.width > 0 && videoDimensions.height > 0) {
@@ -248,9 +276,6 @@ export const CameraUIItem: React.FC<CameraUIItemProps> = ({
 
       // 如果视频已经准备好，重新开始渲染
       if (videoReady) {
-        if (animFrameRef.current) {
-          cancelAnimationFrame(animFrameRef.current);
-        }
         startRenderLoop(adjusted.width, adjusted.height);
       }
     }

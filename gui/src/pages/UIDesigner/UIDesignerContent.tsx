@@ -243,6 +243,7 @@ export const UIDesignerContent: FC<UIDesignerContentProps> = ({
       windowId: "",
       windowTitle: "",
       hasSignal: false,
+      frames: 1, // 默认帧率为每秒1帧
     });
   };
 
@@ -258,6 +259,7 @@ export const UIDesignerContent: FC<UIDesignerContentProps> = ({
       deviceId: "",
       deviceName: "",
       hasSignal: false,
+      frames: 1, // 默认帧率为每秒1帧
     });
   };
 

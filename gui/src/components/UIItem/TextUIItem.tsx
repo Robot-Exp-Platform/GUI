@@ -11,7 +11,7 @@ interface TextUIItemProps {
 export const TextUIItem: React.FC<TextUIItemProps> = ({ item, isRunMode}) => {
   // 为文字添加内边距，防止被锚点遮挡
   const padding = 8;
-  
+
   return (
     <BaseUIItem item={item} isRunMode={isRunMode}>
       <Text

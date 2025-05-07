@@ -20,6 +20,16 @@ interface CameraSource {
   deviceId: string;
 }
 
+// 可用的帧率选项
+const framesOptions = [
+  { key: '1', text: '1 帧/秒', value: 1 },
+  { key: '5', text: '5 帧/秒', value: 5 },
+  { key: '10', text: '10 帧/秒', value: 10 },
+  { key: '15', text: '15 帧/秒', value: 15 },
+  { key: '30', text: '30 帧/秒', value: 30 },
+  { key: '60', text: '60 帧/秒', value: 60 },
+];
+
 export const CameraUIItemEditor: React.FC<CameraUIItemEditorProps> = ({
   item,
 }) => {
@@ -128,6 +138,14 @@ export const CameraUIItemEditor: React.FC<CameraUIItemEditorProps> = ({
     }
   };
 
+  // 更新帧率设置
+  const handleFramesChange = (_e: any, data: any) => {
+    const framesValue = data.value;
+    updateItem(item.id, {
+      frames: framesValue
+    });
+  };
+
   // 刷新摄像头列表
   const handleRefresh = () => {
     loadAvailableCameras();
@@ -154,6 +172,18 @@ export const CameraUIItemEditor: React.FC<CameraUIItemEditorProps> = ({
         </div>
       </Form.Field>
 
+      <Form.Field>
+        <label>画面刷新频率</label>
+        <Dropdown
+          placeholder="选择刷新频率"
+          fluid
+          selection
+          options={framesOptions}
+          value={item.frames || 1}
+          onChange={handleFramesChange}
+        />
+      </Form.Field>
+
       {errorMessage && (
         <Message negative>
           <Message.Header>错误</Message.Header>
@@ -163,7 +193,7 @@ export const CameraUIItemEditor: React.FC<CameraUIItemEditorProps> = ({
 
       <Message info>
         <Message.Header>摄像头捕获</Message.Header>
-        <p>选择一个摄像头设备进行实时捕获。如果摄像头不可用或被其他应用占用，将显示"无信号"。</p>
+        <p>选择一个摄像头设备进行实时捕获。如果摄像头不可用或被其他应用占用，将显示"无信号"。可调整刷新频率以平衡性能和画面流畅度。</p>
       </Message>
     </Form>
   );
