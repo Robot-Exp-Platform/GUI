@@ -9,6 +9,7 @@ import {
   UITriangleItem,
   UICaptureItem,
   UICameraItem,
+  UIButtonItem,
 } from "~/types/UI";
 import { useProject } from "./ProjectContext";
 import { v4 as uuidv4 } from "uuid";
@@ -21,7 +22,14 @@ type AddUIItemParams =
   | Omit<UICircleItem, "id" | "zIndex">
   | Omit<UITriangleItem, "id" | "zIndex">
   | Omit<UICaptureItem, "id" | "zIndex">
-  | Omit<UICameraItem, "id" | "zIndex">;
+  | Omit<UICameraItem, "id" | "zIndex">
+  | Omit<UIButtonItem, "id" | "zIndex">;
+
+// 进程信息接口
+interface ProcessInfo {
+  processId: string;
+  itemId: string;
+}
 
 interface UIDesignerContextType {
   currentUI: UIDesign | null;
@@ -39,6 +47,9 @@ interface UIDesignerContextType {
   moveToTop: (id: string) => void;
   saveUIDesign: () => Promise<boolean>;
   setRunMode: (isRunning: boolean) => void; // 添加切换运行模式的函数
+  registerProcess: (processId: string, itemId: string) => void; // 注册运行中的进程
+  unregisterProcess: (processId: string) => void; // 注销运行中的进程
+  stopAllProcesses: () => Promise<void>; // 停止所有运行中的进程
 }
 
 const UIDesignerContext = createContext<UIDesignerContextType | undefined>(
@@ -56,6 +67,7 @@ export const UIDesignerProvider: React.FC<{ children: React.ReactNode }> = ({
   const [selectedItem, setSelectedItem] = useState<UIItem | null>(null);
   const [isEditing, setIsEditing] = useState<boolean>(false);
   const [isRunMode, setIsRunMode] = useState<boolean>(false); // 运行模式状态
+  const [runningProcesses, setRunningProcesses] = useState<ProcessInfo[]>([]); // 运行中的进程
 
   // 添加新组件
   const addItem = (item: AddUIItemParams) => {
@@ -146,12 +158,51 @@ export const UIDesignerProvider: React.FC<{ children: React.ReactNode }> = ({
     return await project.saveUIDesign(currentUI, currentUIFilePath);
   };
 
+  // 注册运行中的进程
+  const registerProcess = (processId: string, itemId: string) => {
+    setRunningProcesses(prev => [...prev, { processId, itemId }]);
+  };
+
+  // 注销运行中的进程
+  const unregisterProcess = (processId: string) => {
+    setRunningProcesses(prev => prev.filter(p => p.processId !== processId));
+  };
+
+  // 停止所有运行中的进程
+  const stopAllProcesses = async () => {
+    // 复制一份当前运行中的所有进程列表
+    const processes = [...runningProcesses];
+    
+    // 并行停止所有进程
+    const stopPromises = processes.map(async ({ processId, itemId }) => {
+      try {
+        await window.electronAPI.stopRobotPlatform(processId);
+        
+        // 更新对应按钮的状态
+        updateItem(itemId, { 
+          isRunning: false,
+          fill: "#2185d0" // 默认蓝色
+        });
+      } catch (error) {
+        console.error(`停止进程 ${processId} 失败:`, error);
+      }
+    });
+    
+    await Promise.all(stopPromises);
+    
+    // 清空运行中的进程列表
+    setRunningProcesses([]);
+  };
+
   // 设置运行模式
-  const setRunMode = (isRunning: boolean) => {
+  const setRunMode = async (isRunning: boolean) => {
     // 在运行模式下清除选择的元素
     if (isRunning) {
       setSelectedItem(null);
       setIsEditing(false);
+    } else {
+      // 退出运行模式时，停止所有运行中的进程
+      await stopAllProcesses();
     }
     setIsRunMode(isRunning);
   };
@@ -176,6 +227,15 @@ export const UIDesignerProvider: React.FC<{ children: React.ReactNode }> = ({
     }
   }, [currentUI]);
 
+  // 当组件卸载时，确保停止所有运行中的进程
+  useEffect(() => {
+    return () => {
+      if (runningProcesses.length > 0) {
+        stopAllProcesses();
+      }
+    };
+  }, []);
+
   const value = {
     currentUI,
     currentUIFilePath,
@@ -192,6 +252,9 @@ export const UIDesignerProvider: React.FC<{ children: React.ReactNode }> = ({
     moveToTop,
     saveUIDesign,
     setRunMode,
+    registerProcess,
+    unregisterProcess,
+    stopAllProcesses,
   };
 
   return (

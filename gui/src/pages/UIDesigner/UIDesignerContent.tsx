@@ -25,6 +25,7 @@ import {
   ImageUIItem,
   CaptureUIItem,
   CameraUIItem,
+  ButtonUIItem,
 } from "~/components/UIItem";
 import {
   TextUIItemEditor,
@@ -32,6 +33,7 @@ import {
   ShapeUIItemEditor,
   CaptureUIItemEditor,
   CameraUIItemEditor,
+  ButtonUIItemEditor,
 } from "~/components/UIItemEditor";
 import { UISidebar } from "./UISidebar";
 
@@ -263,6 +265,22 @@ export const UIDesignerContent: FC<UIDesignerContentProps> = ({
     });
   };
 
+  const handleAddButton = () => {
+    addItem({
+      type: "button",
+      x: 50,
+      y: 50,
+      width: 120,
+      height: 40,
+      rotation: 0,
+      fill: "#2185d0", // 使用蓝色作为默认按钮颜色
+      text: "执行任务",
+      taskJsonPath: "", // 默认为空，用户可以在编辑器中设置
+      port: 6651, // 默认端口为6651
+      isRunning: false, // 默认状态为非运行中
+    });
+  };
+
   const handleSaveUI = async () => {
     try {
       const success = await saveUIDesign();
@@ -291,6 +309,8 @@ export const UIDesignerContent: FC<UIDesignerContentProps> = ({
         return <ShapeUIItemEditor item={selectedItem} />;
       case "camera":
         return <CameraUIItemEditor item={selectedItem} />;
+      case "button":
+        return <ButtonUIItemEditor item={selectedItem} />;
       default:
         return null;
     }
@@ -330,6 +350,10 @@ export const UIDesignerContent: FC<UIDesignerContentProps> = ({
         case "camera":
           return (
             <CameraUIItem key={item.id} item={item} isRunMode={isRunMode} />
+          );
+        case "button":
+          return (
+            <ButtonUIItem key={item.id} item={item} isRunMode={isRunMode} />
           );
         default:
           return null;
@@ -402,6 +426,7 @@ export const UIDesignerContent: FC<UIDesignerContentProps> = ({
           onAddImage={handleAddImage}
           onAddCapture={handleAddCapture}
           onAddCamera={handleAddCamera}
+          onAddButton={handleAddButton}
           onSaveUI={handleSaveUI}
           onToggleRunMode={handleToggleRunMode}
         />
@@ -447,6 +472,8 @@ export const UIDesignerContent: FC<UIDesignerContentProps> = ({
                   ? "窗口捕获"
                   : selectedItem.type === "camera"
                   ? "摄像头"
+                  : selectedItem.type === "button"
+                  ? "按钮"
                   : "组件"}
               </Header>
               {renderEditor()}

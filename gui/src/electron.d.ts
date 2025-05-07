@@ -141,7 +141,46 @@ interface ElectronAPI {
       name: string;
     };
     error?: string;
-  }>;  
+  }>;
+  
+  // 新增：运行外部程序
+  runExternalProgram: (options: {
+    program: string;
+    args?: string[];
+    workingDir?: string;
+  }) => Promise<{
+    success: boolean;
+    exitCode?: number;
+    stdout?: string;
+    stderr?: string;
+    error?: string;
+  }>;
+  
+  // 新增：选择任务JSON文件
+  selectTaskJsonFile: () => Promise<{
+    success: boolean;
+    filePath?: string;
+    error?: string;
+  }>;
+
+  // 新增：运行机器人平台程序
+  runRobotPlatform: (options: {
+    projectPath: string;
+    taskJsonPath?: string;
+    port?: number;
+  }) => Promise<{
+    success: boolean;
+    processId?: string;
+    message?: string;
+    error?: string;
+  }>;
+
+  // 新增：停止运行中的机器人平台进程
+  stopRobotPlatform: (processId: string) => Promise<{
+    success: boolean;
+    message?: string;
+    error?: string;
+  }>;
 }
 
 interface Window {

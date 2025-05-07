@@ -1,7 +1,7 @@
 // UI 组件基础类型
 export interface UIBaseItem {
   id: string;
-  type: "text" | "image" | "rectangle" | "circle" | "triangle" | "capture" | "camera";
+  type: "text" | "image" | "rectangle" | "circle" | "triangle" | "capture" | "camera" | "button";
   x: number;
   y: number;
   width: number;
@@ -41,13 +41,22 @@ export interface UITriangleItem extends UIBaseItem {
   type: "triangle";
 }
 
+// 按钮组件
+export interface UIButtonItem extends UIBaseItem {
+  type: "button";
+  text: string;
+  taskJsonPath: string;
+  port: number; // 添加端口字段，用于指定运行时的端口参数
+  isRunning?: boolean; // 添加运行状态字段，表示按钮当前是否在运行程序
+}
+
 // 窗口捕获组件
 export interface UICaptureItem extends UIBaseItem {
   type: "capture";
   windowId: string;
   windowTitle: string;
   hasSignal: boolean;
-  frames?: number; // 每秒渲染的帧数，默认为1
+  frames: number; // 每秒渲染的帧数，默认为1
 }
 
 // 摄像头捕获组件
@@ -56,7 +65,7 @@ export interface UICameraItem extends UIBaseItem {
   deviceId: string;
   deviceName: string;
   hasSignal: boolean;
-  frames?: number; // 每秒渲染的帧数，默认为1
+  frames: number; // 每秒渲染的帧数，默认为1
 }
 
 // UI组件联合类型
@@ -66,6 +75,7 @@ export type UIItem =
   | UIRectangleItem
   | UICircleItem
   | UITriangleItem
+  | UIButtonItem
   | UICaptureItem
   | UICameraItem;
 

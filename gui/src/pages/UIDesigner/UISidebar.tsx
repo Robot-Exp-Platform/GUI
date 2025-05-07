@@ -11,6 +11,7 @@ interface UISidebarProps {
   onAddImage: () => void;
   onAddCapture: () => void;
   onAddCamera: () => void;
+  onAddButton: () => void; // 添加按钮组件的回调函数
   onSaveUI: () => void;
   onToggleRunMode: () => void;
 }
@@ -24,6 +25,7 @@ export const UISidebar: FC<UISidebarProps> = ({
   onAddImage,
   onAddCapture,
   onAddCamera,
+  onAddButton, // 添加按钮组件的回调函数
   onSaveUI,
   onToggleRunMode,
 }) => {
@@ -73,6 +75,13 @@ export const UISidebar: FC<UISidebarProps> = ({
             <List.Content>
               <List.Header>三角形</List.Header>
               <List.Description>添加三角形</List.Description>
+            </List.Content>
+          </List.Item>
+          <List.Item as="a" onClick={onAddButton}>
+            <List.Icon name="hand pointer" size="large" verticalAlign="middle" />
+            <List.Content>
+              <List.Header>按钮</List.Header>
+              <List.Description>添加可点击按钮</List.Description>
             </List.Content>
           </List.Item>
           <List.Item as="a" onClick={onAddCapture}>

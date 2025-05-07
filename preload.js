@@ -62,4 +62,16 @@ contextBridge.exposeInMainWorld("electronAPI", {
 
   // 开始捕获摄像头
   startCameraCapture: (deviceId) => ipcRenderer.invoke("start-camera-capture", deviceId),
+  
+  // 运行外部程序
+  runExternalProgram: (options) => ipcRenderer.invoke("run-external-program", options),
+  
+  // 选择任务JSON文件
+  selectTaskJsonFile: () => ipcRenderer.invoke("select-task-json-file"),
+  
+  // 运行机器人平台程序
+  runRobotPlatform: (options) => ipcRenderer.invoke("run-robot-platform", options),
+  
+  // 停止运行中的机器人平台进程
+  stopRobotPlatform: (processId) => ipcRenderer.invoke("stop-robot-platform", processId),
 });

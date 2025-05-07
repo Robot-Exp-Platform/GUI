@@ -9,6 +9,8 @@ const {
 } = require("electron");
 const fs = require("fs");
 const path = require("path");
+const { spawn } = require("child_process");
+const { v4: uuidv4 } = require("uuid");
 
 let win;
 
@@ -16,6 +18,9 @@ let win;
 let windowSourcesCache = {};
 let lastSourcesUpdateTime = 0;
 const SOURCES_CACHE_TTL = 2000; // 缓存有效期2秒
+
+// 存储所有运行中的机器人平台进程
+let runningProcesses = {};
 
 function createWindow() {
   win = new BrowserWindow({
@@ -491,6 +496,217 @@ app.whenReady().then(() => {
       return {
         success: false,
         error: `启动摄像头捕获失败: ${error.message}`
+      };
+    }
+  });
+
+  // 运行外部程序
+  ipcMain.handle("run-external-program", async (event, options) => {
+    try {
+      const { program, args, workingDir } = options;
+      
+      // 验证参数
+      if (!program) {
+        return { success: false, error: "程序路径不能为空" };
+      }
+      
+      // 检查程序文件是否存在
+      if (!fs.existsSync(program)) {
+        return { success: false, error: `程序文件不存在: ${program}` };
+      }
+      
+      // 准备工作目录
+      const cwd = workingDir || path.dirname(program);
+      
+      // 使用spawn启动子进程
+      const childProcess = spawn(program, args || [], { cwd });
+      
+      let outputData = '';
+      let errorData = '';
+      
+      childProcess.stdout.on('data', (data) => {
+        outputData += data.toString();
+      });
+      
+      childProcess.stderr.on('data', (data) => {
+        errorData += data.toString();
+      });
+      
+      // 返回一个Promise，在进程退出时resolve
+      return new Promise((resolve) => {
+        childProcess.on('close', (code) => {
+          resolve({
+            success: code === 0,
+            exitCode: code,
+            stdout: outputData,
+            stderr: errorData
+          });
+        });
+        
+        childProcess.on('error', (err) => {
+          resolve({
+            success: false,
+            error: `启动程序失败: ${err.message}`
+          });
+        });
+      });
+    } catch (err) {
+      return {
+        success: false,
+        error: `运行外部程序失败: ${err.message}`,
+      };
+    }
+  });
+  
+  // 运行机器人平台程序
+  ipcMain.handle("run-robot-platform", async (event, { projectPath, taskJsonPath, port }) => {
+    try {
+      if (!projectPath) {
+        return { success: false, error: "项目路径不能为空" };
+      }
+      
+      // 构建路径
+      const robotPlatformPath = path.join(app.getAppPath(), "bin", "robot_platform.exe");
+      const configJsonPath = path.join(projectPath, "config.json");
+      
+      // 确定任务文件路径
+      // 如果用户指定了路径则使用，否则使用项目目录下的默认文件
+      const finalTaskJsonPath = taskJsonPath || path.join(projectPath, "task.json");
+      
+      // 检查程序文件是否存在
+      if (!fs.existsSync(robotPlatformPath)) {
+        return { success: false, error: `机器人平台程序不存在: ${robotPlatformPath}` };
+      }
+      
+      // 检查配置文件是否存在
+      if (!fs.existsSync(configJsonPath)) {
+        return { success: false, error: `配置文件不存在: ${configJsonPath}` };
+      }
+      
+      // 检查任务文件是否存在
+      if (!fs.existsSync(finalTaskJsonPath)) {
+        return { success: false, error: `任务文件不存在: ${finalTaskJsonPath}` };
+      }
+      
+      // 准备命令行参数
+      const args = ["-c", configJsonPath, "-t", finalTaskJsonPath];
+      
+      // 如果指定了端口，添加端口参数
+      if (port) {
+        args.push("-p", port.toString());
+      }
+      
+      // 使用spawn启动子进程
+      const cwd = path.dirname(robotPlatformPath);
+      const childProcess = spawn(robotPlatformPath, args, { cwd, detached: true });
+      
+      // 生成唯一的进程ID
+      const processId = uuidv4();
+      
+      // 存储进程引用，用于后续停止进程
+      runningProcesses[processId] = {
+        process: childProcess,
+        startTime: Date.now()
+      };
+      
+      let outputData = '';
+      let errorData = '';
+      
+      childProcess.stdout.on('data', (data) => {
+        outputData += data.toString();
+      });
+      
+      childProcess.stderr.on('data', (data) => {
+        errorData += data.toString();
+      });
+      
+      // 当进程结束时，从运行列表中删除
+      childProcess.on('close', (code) => {
+        delete runningProcesses[processId];
+      });
+      
+      childProcess.on('error', (err) => {
+        delete runningProcesses[processId];
+      });
+      
+      // 这里我们立即返回进程ID，不等待进程结束
+      return {
+        success: true,
+        processId: processId,
+        message: "机器人平台程序已启动"
+      };
+    } catch (err) {
+      return {
+        success: false,
+        error: `运行机器人平台失败: ${err.message}`,
+      };
+    }
+  });
+  
+  // 停止运行中的机器人平台进程
+  ipcMain.handle("stop-robot-platform", async (event, processId) => {
+    try {
+      if (!processId || !runningProcesses[processId]) {
+        return { 
+          success: false, 
+          error: "找不到指定的进程" 
+        };
+      }
+      
+      const processInfo = runningProcesses[processId];
+      
+      // 在 Windows 平台上使用 taskkill 确保子进程被终止
+      if (process.platform === 'win32') {
+        try {
+          // 终止进程及其子进程
+          processInfo.process.kill();
+        } catch (err) {
+          console.error(`终止进程失败: ${err.message}`);
+        }
+      } else {
+        // 在非 Windows 平台上使用 kill 信号
+        try {
+          process.kill(-processInfo.process.pid);
+        } catch (err) {
+          console.error(`终止进程失败: ${err.message}`);
+          processInfo.process.kill();
+        }
+      }
+      
+      // 从运行中进程列表移除
+      delete runningProcesses[processId];
+      
+      return { 
+        success: true,
+        message: "进程已终止" 
+      };
+    } catch (err) {
+      return {
+        success: false,
+        error: `停止进程失败: ${err.message}`
+      };
+    }
+  });
+  
+  // 选择任务JSON文件
+  ipcMain.handle("select-task-json-file", async () => {
+    const { canceled, filePaths } = await dialog.showOpenDialog(win, {
+      properties: ["openFile"],
+      filters: [{ name: "任务JSON文件", extensions: ["json"] }],
+    });
+    
+    if (canceled) return { success: false };
+    
+    try {
+      const filePath = filePaths[0];
+      return {
+        success: true,
+        filePath: filePath
+      };
+    } catch (err) {
+      return {
+        success: false,
+        error: `选择任务JSON文件失败: ${err.message}`,
       };
     }
   });

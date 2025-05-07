@@ -5,4 +5,5 @@ export * from "./CircleUIItem";
 export * from "./TriangleUIItem";
 export * from "./CaptureUIItem";
 export * from "./CameraUIItem";
+export * from "./ButtonUIItem";
 export * from "./BaseUIItem";
