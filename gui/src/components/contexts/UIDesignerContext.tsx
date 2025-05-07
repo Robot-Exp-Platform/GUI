@@ -1,15 +1,25 @@
 import React, { createContext, useContext, useState, useEffect } from "react";
-import { UIDesign, UIItem, UITextItem, UIImageItem, UIRectangleItem, UICircleItem, UITriangleItem } from "~/types/UI";
+import {
+  UIDesign,
+  UIItem,
+  UITextItem,
+  UIImageItem,
+  UIRectangleItem,
+  UICircleItem,
+  UITriangleItem,
+  UICaptureItem,
+} from "~/types/UI";
 import { useProject } from "./ProjectContext";
 import { v4 as uuidv4 } from "uuid";
 
 // 定义更精确的添加项类型
-type AddUIItemParams = 
+type AddUIItemParams =
   | Omit<UITextItem, "id" | "zIndex">
   | Omit<UIImageItem, "id" | "zIndex">
   | Omit<UIRectangleItem, "id" | "zIndex">
   | Omit<UICircleItem, "id" | "zIndex">
-  | Omit<UITriangleItem, "id" | "zIndex">;
+  | Omit<UITriangleItem, "id" | "zIndex">
+  | Omit<UICaptureItem, "id" | "zIndex">;
 
 interface UIDesignerContextType {
   currentUI: UIDesign | null;

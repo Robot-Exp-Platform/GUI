@@ -45,4 +45,14 @@ contextBridge.exposeInMainWorld("electronAPI", {
   
   // 选择图片文件
   selectImageFile: () => ipcRenderer.invoke("select-image-file"),
+  
+  // 窗口捕获相关API
+  // 获取所有可用窗口源
+  getWindowSources: () => ipcRenderer.invoke("get-window-sources"),
+  
+  // 开始捕获指定窗口
+  startWindowCapture: (sourceId) => ipcRenderer.invoke("start-window-capture", sourceId),
+  
+  // 检查窗口是否仍然存在
+  checkWindowExists: (sourceId) => ipcRenderer.invoke("check-window-exists", sourceId),
 });

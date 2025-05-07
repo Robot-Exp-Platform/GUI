@@ -5,11 +5,17 @@ const {
   dialog,
   ipcMain,
   shell,
+  desktopCapturer,
 } = require("electron");
 const fs = require("fs");
 const path = require("path");
 
 let win;
+
+// 存储窗口源的缓存，用于快速检查窗口是否仍然存在
+let windowSourcesCache = {};
+let lastSourcesUpdateTime = 0;
+const SOURCES_CACHE_TTL = 2000; // 缓存有效期2秒
 
 function createWindow() {
   win = new BrowserWindow({
@@ -318,6 +324,128 @@ app.whenReady().then(() => {
       return {
         success: false,
         error: `选择图片失败: ${err.message}`,
+      };
+    }
+  });
+
+  // 获取所有可用窗口源
+  ipcMain.handle("get-window-sources", async () => {
+    try {
+      // 获取所有窗口和屏幕源
+      const sources = await desktopCapturer.getSources({
+        types: ['window', 'screen'],
+        thumbnailSize: { width: 300, height: 200 },
+        fetchWindowIcons: true
+      });
+      
+      // 更新缓存
+      windowSourcesCache = {};
+      sources.forEach(source => {
+        windowSourcesCache[source.id] = {
+          id: source.id,
+          name: source.name,
+          thumbnail: source.thumbnail.toDataURL(),
+          appIcon: source.appIcon?.toDataURL(),
+          display_id: source.display_id,
+          timestamp: Date.now()
+        };
+      });
+      lastSourcesUpdateTime = Date.now();
+      
+      // 返回简化后的窗口信息
+      return {
+        success: true,
+        sources: sources.map(source => ({
+          id: source.id,
+          name: source.name,
+          thumbnail: source.thumbnail.toDataURL(),
+          appIcon: source.appIcon?.toDataURL(),
+          display_id: source.display_id
+        }))
+      };
+    } catch (error) {
+      console.error('获取窗口源失败:', error);
+      return {
+        success: false,
+        error: `获取窗口源失败: ${error.message}`
+      };
+    }
+  });
+
+  // 检查窗口是否仍然存在
+  ipcMain.handle("check-window-exists", async (event, sourceId) => {
+    try {
+      // 如果缓存有效，直接从缓存中检查
+      const now = Date.now();
+      if (now - lastSourcesUpdateTime < SOURCES_CACHE_TTL) {
+        return { 
+          success: true,
+          exists: !!windowSourcesCache[sourceId]
+        };
+      }
+      
+      // 缓存过期，重新获取窗口列表
+      const sources = await desktopCapturer.getSources({
+        types: ['window', 'screen'],
+        thumbnailSize: { width: 150, height: 150 }
+      });
+      
+      // 更新缓存
+      windowSourcesCache = {};
+      sources.forEach(source => {
+        windowSourcesCache[source.id] = {
+          id: source.id,
+          name: source.name,
+          timestamp: Date.now()
+        };
+      });
+      lastSourcesUpdateTime = now;
+      
+      // 检查指定的窗口是否存在
+      return {
+        success: true,
+        exists: sources.some(source => source.id === sourceId)
+      };
+    } catch (error) {
+      console.error('检查窗口状态失败:', error);
+      return {
+        success: false,
+        error: `检查窗口状态失败: ${error.message}`
+      };
+    }
+  });
+
+  // 开始捕获指定窗口（这个API实际上只返回相关信息，实际捕获在渲染进程中进行）
+  ipcMain.handle("start-window-capture", async (event, sourceId) => {
+    try {
+      // 获取指定窗口的最新信息
+      const sources = await desktopCapturer.getSources({
+        types: ['window', 'screen'],
+        thumbnailSize: { width: 300, height: 200 }
+      });
+      
+      const source = sources.find(s => s.id === sourceId);
+      if (!source) {
+        return {
+          success: false,
+          error: "未找到指定的窗口"
+        };
+      }
+      
+      // 返回窗口信息，供渲染进程进行捕获
+      return {
+        success: true,
+        source: {
+          id: source.id,
+          name: source.name,
+          thumbnail: source.thumbnail.toDataURL()
+        }
+      };
+    } catch (error) {
+      console.error('启动窗口捕获失败:', error);
+      return {
+        success: false,
+        error: `启动窗口捕获失败: ${error.message}`
       };
     }
   });

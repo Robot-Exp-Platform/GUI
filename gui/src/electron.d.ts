@@ -90,6 +90,37 @@ interface ElectronAPI {
     filePath?: string;
     error?: string;
   }>;
+  
+  // 新增：获取所有可用窗口源
+  getWindowSources: () => Promise<{
+    success: boolean;
+    sources?: Array<{
+      id: string;
+      name: string;
+      thumbnail: string;
+      appIcon?: string;
+      display_id: string;
+    }>;
+    error?: string;
+  }>;
+  
+  // 新增：开始捕获指定窗口
+  startWindowCapture: (sourceId: string) => Promise<{
+    success: boolean;
+    source?: {
+      id: string;
+      name: string;
+      thumbnail: string;
+    };
+    error?: string;
+  }>;
+  
+  // 新增：检查窗口是否仍然存在
+  checkWindowExists: (sourceId: string) => Promise<{
+    success: boolean;
+    exists?: boolean;
+    error?: string;
+  }>;
 }
 
 interface Window {

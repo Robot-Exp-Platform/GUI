@@ -27,3 +27,33 @@
   bottom: 0;
   left: 0;
 }
+
+/* 窗口捕获下拉菜单和刷新按钮布局 */
+.dropdown-with-refresh {
+  display: flex;
+  align-items: center;
+}
+
+.dropdown-with-refresh .ui.dropdown {
+  flex: 1;
+  margin-right: 8px;
+}
+
+/* 窗口缩略图预览容器 */
+.window-thumbnail-preview {
+  margin-top: 10px;
+  margin-bottom: 15px;
+  text-align: center;
+}
+
+.window-thumbnail-preview img {
+  max-width: 100%;
+  max-height: 150px;
+  object-fit: contain;
+  border: 1px solid #ddd;
+}
+
+/* 确保下拉菜单显示在其他元素之上 */
+.ui.selection.dropdown .menu {
+  z-index: 1000 !important;
+}
