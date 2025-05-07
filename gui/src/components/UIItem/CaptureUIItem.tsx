@@ -6,10 +6,11 @@ import { BaseUIItem } from "./BaseUIItem";
 
 interface CaptureUIItemProps {
   item: UICaptureItem;
+  isRunMode: boolean;
 }
 
 // 窗口捕获组件，实时显示另一个窗口的画面，类似OBS
-export const CaptureUIItem: React.FC<CaptureUIItemProps> = ({ item }) => {
+export const CaptureUIItem: React.FC<CaptureUIItemProps> = ({ item, isRunMode }) => {
   const [isActive, setIsActive] = useState(item.hasSignal);
   const [windowTitle, setWindowTitle] = useState(item.windowTitle);
   const [captureError, setCaptureError] = useState(false);
@@ -298,7 +299,7 @@ export const CaptureUIItem: React.FC<CaptureUIItemProps> = ({ item }) => {
   }, [item.width, item.height, videoDimensions.width, videoDimensions.height]);
 
   return (
-    <BaseUIItem item={item}>
+    <BaseUIItem item={item} isRunMode={isRunMode}>
       <Group>
         {/* 背景 - 使用透明背景 */}
         <Rect

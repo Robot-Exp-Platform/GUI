@@ -5,9 +5,10 @@ import { BaseUIItem } from "./BaseUIItem";
 
 interface ImageUIItemProps {
   item: UIImageItem;
+  isRunMode: boolean;
 }
 
-export const ImageUIItem: React.FC<ImageUIItemProps> = ({ item }) => {
+export const ImageUIItem: React.FC<ImageUIItemProps> = ({ item, isRunMode }) => {
   const [image, setImage] = useState<HTMLImageElement | null>(null);
 
   useEffect(() => {
@@ -26,7 +27,7 @@ export const ImageUIItem: React.FC<ImageUIItemProps> = ({ item }) => {
   }, [item.src]);
 
   return (
-    <BaseUIItem item={item}>
+    <BaseUIItem item={item} isRunMode={isRunMode}>
       {image && (
         <Image
           image={image}

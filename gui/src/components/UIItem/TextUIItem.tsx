@@ -5,14 +5,15 @@ import { BaseUIItem } from "./BaseUIItem";
 
 interface TextUIItemProps {
   item: UITextItem;
+  isRunMode: boolean;
 }
 
-export const TextUIItem: React.FC<TextUIItemProps> = ({ item }) => {
+export const TextUIItem: React.FC<TextUIItemProps> = ({ item, isRunMode}) => {
   // 为文字添加内边距，防止被锚点遮挡
   const padding = 8;
   
   return (
-    <BaseUIItem item={item}>
+    <BaseUIItem item={item} isRunMode={isRunMode}>
       <Text
         text={item.text}
         fontSize={item.fontSize}

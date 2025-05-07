@@ -28,6 +28,7 @@ interface UIDesignerContextType {
   currentUIFilePath: string | null;
   selectedItem: UIItem | null;
   isEditing: boolean;
+  isRunMode: boolean; // 添加运行模式状态
   setCurrentUI: (ui: UIDesign) => void;
   setCurrentUIFilePath: (path: string) => void;
   addItem: (item: AddUIItemParams) => void;
@@ -37,6 +38,7 @@ interface UIDesignerContextType {
   setIsEditing: (isEditing: boolean) => void;
   moveToTop: (id: string) => void;
   saveUIDesign: () => Promise<boolean>;
+  setRunMode: (isRunning: boolean) => void; // 添加切换运行模式的函数
 }
 
 const UIDesignerContext = createContext<UIDesignerContextType | undefined>(
@@ -53,6 +55,7 @@ export const UIDesignerProvider: React.FC<{ children: React.ReactNode }> = ({
   );
   const [selectedItem, setSelectedItem] = useState<UIItem | null>(null);
   const [isEditing, setIsEditing] = useState<boolean>(false);
+  const [isRunMode, setIsRunMode] = useState<boolean>(false); // 运行模式状态
 
   // 添加新组件
   const addItem = (item: AddUIItemParams) => {
@@ -143,14 +146,24 @@ export const UIDesignerProvider: React.FC<{ children: React.ReactNode }> = ({
     return await project.saveUIDesign(currentUI, currentUIFilePath);
   };
 
-  // 在选择的UI项改变时，自动进入编辑模式
+  // 设置运行模式
+  const setRunMode = (isRunning: boolean) => {
+    // 在运行模式下清除选择的元素
+    if (isRunning) {
+      setSelectedItem(null);
+      setIsEditing(false);
+    }
+    setIsRunMode(isRunning);
+  };
+
+  // 在选择的UI项改变时，自动进入编辑模式（仅在非运行模式）
   useEffect(() => {
-    if (selectedItem) {
+    if (selectedItem && !isRunMode) {
       setIsEditing(true);
     } else {
       setIsEditing(false);
     }
-  }, [selectedItem]);
+  }, [selectedItem, isRunMode]);
 
   // 在修改UI时，尝试自动保存
   useEffect(() => {
@@ -168,6 +181,7 @@ export const UIDesignerProvider: React.FC<{ children: React.ReactNode }> = ({
     currentUIFilePath,
     selectedItem,
     isEditing,
+    isRunMode,
     setCurrentUI,
     setCurrentUIFilePath,
     addItem,
@@ -177,6 +191,7 @@ export const UIDesignerProvider: React.FC<{ children: React.ReactNode }> = ({
     setIsEditing,
     moveToTop,
     saveUIDesign,
+    setRunMode,
   };
 
   return (

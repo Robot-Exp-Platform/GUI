@@ -5,9 +5,13 @@ import { BaseUIItem } from "./BaseUIItem";
 
 interface CameraUIItemProps {
   item: UICameraItem;
+  isRunMode: boolean;
 }
 
-export const CameraUIItem: React.FC<CameraUIItemProps> = ({ item }) => {
+export const CameraUIItem: React.FC<CameraUIItemProps> = ({
+  item,
+  isRunMode,
+}) => {
   const [isActive, setIsActive] = useState(item.hasSignal);
   const [deviceName, setDeviceName] = useState(item.deviceName);
   const [captureError, setCaptureError] = useState(false);
@@ -92,14 +96,14 @@ export const CameraUIItem: React.FC<CameraUIItemProps> = ({ item }) => {
     try {
       // 首先通过Electron API获取摄像头信息
       const response = await window.electronAPI.startCameraCapture(deviceId);
-      
+
       if (!response.success) {
         setCaptureError(true);
         setIsActive(false);
         console.error("摄像头捕获失败:", response.error);
         return;
       }
-      
+
       // 获取摄像头视频流 - 这部分仍需要浏览器API
       let stream;
       try {
@@ -113,13 +117,16 @@ export const CameraUIItem: React.FC<CameraUIItemProps> = ({ item }) => {
 
         stream = await navigator.mediaDevices.getUserMedia(constraints);
       } catch (deviceError) {
-        console.warn(`指定设备(${deviceId})不可用，尝试使用默认摄像头:`, deviceError);
-        
+        console.warn(
+          `指定设备(${deviceId})不可用，尝试使用默认摄像头:`,
+          deviceError
+        );
+
         // 如果指定设备失败，尝试使用任何可用的摄像头
         try {
           stream = await navigator.mediaDevices.getUserMedia({
             video: true,
-            audio: false
+            audio: false,
           });
         } catch (fallbackError) {
           // 所有摄像头都不可用
@@ -190,7 +197,7 @@ export const CameraUIItem: React.FC<CameraUIItemProps> = ({ item }) => {
       try {
         // 清除之前的内容
         ctx.clearRect(0, 0, canvas.width, canvas.height);
-        
+
         // 绘制视频帧到canvas
         ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
 
@@ -250,7 +257,7 @@ export const CameraUIItem: React.FC<CameraUIItemProps> = ({ item }) => {
   }, [item.width, item.height, videoDimensions.width, videoDimensions.height]);
 
   return (
-    <BaseUIItem item={item}>
+    <BaseUIItem item={item} isRunMode={isRunMode}>
       <Group>
         {/* 背景 */}
         <Rect

@@ -13,12 +13,14 @@ interface BaseUIItemProps {
   item: UIItem;
   children: React.ReactNode;
   onContextMenu?: (e: KonvaEventObject<PointerEvent>) => void;
+  isRunMode: boolean; // 是否运行模式
 }
 
 export const BaseUIItem: React.FC<BaseUIItemProps> = ({
   item,
   children,
   onContextMenu,
+  isRunMode,
 }) => {
   const {
     selectedItem,
@@ -40,6 +42,9 @@ export const BaseUIItem: React.FC<BaseUIItemProps> = ({
 
   // 处理选择
   const handleSelect = (e: KonvaEventObject<MouseEvent>) => {
+    // 运行模式下不处理选择
+    if (isRunMode) return;
+
     e.cancelBubble = true;
 
     if (isSelected) return;
@@ -50,6 +55,9 @@ export const BaseUIItem: React.FC<BaseUIItemProps> = ({
 
   // 处理拖拽
   const handleDragEnd = (e: KonvaEventObject<DragEvent>) => {
+    // 运行模式下不应该触发，但为了安全起见仍然检查
+    if (isRunMode) return;
+
     updateItem(item.id, {
       x: e.target.x(),
       y: e.target.y(),
@@ -58,6 +66,9 @@ export const BaseUIItem: React.FC<BaseUIItemProps> = ({
 
   // 处理变换结束（调整大小）
   const handleTransformEnd = () => {
+    // 运行模式下不应该触发，但为了安全起见仍然检查
+    if (isRunMode) return;
+
     if (!shapeRef.current) return;
 
     const node = shapeRef.current;
@@ -79,6 +90,9 @@ export const BaseUIItem: React.FC<BaseUIItemProps> = ({
 
   // 处理右键菜单
   const handleContextMenu = (e: KonvaEventObject<PointerEvent>) => {
+    // 运行模式下不显示右键菜单
+    if (isRunMode) return;
+
     e.evt.preventDefault();
     selectItem(item.id);
     moveToTop(item.id);
@@ -106,11 +120,12 @@ export const BaseUIItem: React.FC<BaseUIItemProps> = ({
   };
 
   React.useEffect(() => {
-    if (isSelected && trRef.current && shapeRef.current) {
+    // 只在非运行模式下更新变换器
+    if (isSelected && !isRunMode && trRef.current && shapeRef.current) {
       trRef.current.nodes([shapeRef.current]);
       trRef.current.getLayer().batchDraw();
     }
-  }, [isSelected]);
+  }, [isSelected, isRunMode]);
 
   // 计算组件中心点位置
   const centerX = item.width / 2;
@@ -127,7 +142,7 @@ export const BaseUIItem: React.FC<BaseUIItemProps> = ({
           rotation={item.rotation}
           offsetX={centerX} // 设置旋转中心为组件宽度的一半
           offsetY={centerY} // 设置旋转中心为组件高度的一半
-          draggable
+          draggable={!isRunMode} // 运行模式下禁用拖动
           onClick={handleSelect}
           onTap={handleSelect}
           onDragEnd={handleDragEnd}
@@ -137,7 +152,8 @@ export const BaseUIItem: React.FC<BaseUIItemProps> = ({
           {children}
         </Group>
 
-        {isSelected && (
+        {/* 只在非运行模式下显示变换器 */}
+        {isSelected && !isRunMode && (
           <Transformer
             ref={trRef}
             rotateEnabled={true}

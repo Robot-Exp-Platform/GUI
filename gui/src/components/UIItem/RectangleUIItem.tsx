@@ -5,11 +5,12 @@ import { BaseUIItem } from "./BaseUIItem";
 
 interface RectangleUIItemProps {
   item: UIRectangleItem;
+  isRunMode: boolean;
 }
 
-export const RectangleUIItem: React.FC<RectangleUIItemProps> = ({ item }) => {
+export const RectangleUIItem: React.FC<RectangleUIItemProps> = ({ item, isRunMode }) => {
   return (
-    <BaseUIItem item={item}>
+    <BaseUIItem item={item} isRunMode={isRunMode}>
       <Rect fill={item.fill} width={item.width} height={item.height} />
     </BaseUIItem>
   );

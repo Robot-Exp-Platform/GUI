@@ -5,9 +5,10 @@ import { BaseUIItem } from "./BaseUIItem";
 
 interface TriangleUIItemProps {
   item: UITriangleItem;
+  isRunMode: boolean;
 }
 
-export const TriangleUIItem: React.FC<TriangleUIItemProps> = ({ item }) => {
+export const TriangleUIItem: React.FC<TriangleUIItemProps> = ({ item, isRunMode }) => {
   // 计算三角形的点坐标，实现可独立调整宽高的三角形
   const points = [
     0, item.height,     // 左下角
@@ -16,7 +17,7 @@ export const TriangleUIItem: React.FC<TriangleUIItemProps> = ({ item }) => {
   ];
 
   return (
-    <BaseUIItem item={item}>
+    <BaseUIItem item={item} isRunMode={isRunMode}>
       <Line
         points={points}
         fill={item.fill}

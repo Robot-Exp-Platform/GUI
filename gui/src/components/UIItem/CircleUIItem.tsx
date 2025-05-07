@@ -5,15 +5,16 @@ import { BaseUIItem } from "./BaseUIItem";
 
 interface CircleUIItemProps {
   item: UICircleItem;
+  isRunMode: boolean;
 }
 
-export const CircleUIItem: React.FC<CircleUIItemProps> = ({ item }) => {
+export const CircleUIItem: React.FC<CircleUIItemProps> = ({ item, isRunMode }) => {
   // 使用宽度和高度的一半分别作为椭圆的x半径和y半径
   const radiusX = item.width / 2;
   const radiusY = item.height / 2;
 
   return (
-    <BaseUIItem item={item}>
+    <BaseUIItem item={item} isRunMode={isRunMode}>
       <Ellipse
         fill={item.fill}
         radiusX={radiusX}
