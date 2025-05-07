@@ -7,3 +7,4 @@ export * from "./CaptureUIItem";
 export * from "./CameraUIItem";
 export * from "./ButtonUIItem";
 export * from "./BaseUIItem";
+export * from "./MonitorUIItem";

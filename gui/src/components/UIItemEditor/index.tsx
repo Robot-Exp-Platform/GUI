@@ -4,3 +4,4 @@ export * from "./ShapeUIItemEditor";
 export * from "./CaptureUIItemEditor";
 export * from "./CameraUIItemEditor";
 export * from "./ButtonUIItemEditor";
+export * from "./MonitorUIItemEditor";

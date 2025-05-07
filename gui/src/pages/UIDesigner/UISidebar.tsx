@@ -12,6 +12,7 @@ interface UISidebarProps {
   onAddCapture: () => void;
   onAddCamera: () => void;
   onAddButton: () => void; // 添加按钮组件的回调函数
+  onAddMonitor: () => void; // 添加监视器组件的回调函数
   onSaveUI: () => void;
   onToggleRunMode: () => void;
 }
@@ -26,6 +27,7 @@ export const UISidebar: FC<UISidebarProps> = ({
   onAddCapture,
   onAddCamera,
   onAddButton, // 添加按钮组件的回调函数
+  onAddMonitor, // 添加监视器组件的回调函数
   onSaveUI,
   onToggleRunMode,
 }) => {
@@ -100,6 +102,17 @@ export const UISidebar: FC<UISidebarProps> = ({
             <List.Content>
               <List.Header>摄像头</List.Header>
               <List.Description>添加摄像头捕获</List.Description>
+            </List.Content>
+          </List.Item>
+          <List.Item as="a" onClick={onAddMonitor}>
+            <List.Icon
+              name="chart line"
+              size="large"
+              verticalAlign="middle"
+            />
+            <List.Content>
+              <List.Header>监视器</List.Header>
+              <List.Description>添加数据监视图表</List.Description>
             </List.Content>
           </List.Item>
         </List>

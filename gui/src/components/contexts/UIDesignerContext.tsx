@@ -10,6 +10,7 @@ import {
   UICaptureItem,
   UICameraItem,
   UIButtonItem,
+  UIMonitorItem,
 } from "~/types/UI";
 import { useProject } from "./ProjectContext";
 import { v4 as uuidv4 } from "uuid";
@@ -23,7 +24,8 @@ type AddUIItemParams =
   | Omit<UITriangleItem, "id" | "zIndex">
   | Omit<UICaptureItem, "id" | "zIndex">
   | Omit<UICameraItem, "id" | "zIndex">
-  | Omit<UIButtonItem, "id" | "zIndex">;
+  | Omit<UIButtonItem, "id" | "zIndex">
+  | Omit<UIMonitorItem, "id" | "zIndex">;
 
 // 进程信息接口
 interface ProcessInfo {

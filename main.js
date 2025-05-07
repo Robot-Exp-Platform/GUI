@@ -11,9 +11,12 @@ const fs = require("fs");
 const path = require("path");
 const { spawn } = require("child_process");
 const { v4: uuidv4 } = require("uuid");
+const net = require("net"); // 添加net模块用于TCP通信
 
 let win;
 
+// TCP服务器与连接管理
+let tcpServers = {}; // 存储所有活动的TCP服务器 {serverId: {server, connections, buffer}}
 // 存储窗口源的缓存，用于快速检查窗口是否仍然存在
 let windowSourcesCache = {};
 let lastSourcesUpdateTime = 0;
@@ -140,11 +143,11 @@ app.whenReady().then(() => {
             nextId: 1,
             pandaCounter: 0,
             urCounter: 0,
-            sensorACounter: 0, 
+            sensorACounter: 0,
             sensorBCounter: 0,
-            taskCounter: 0
+            taskCounter: 0,
           },
-          task_graph: []
+          task_graph: [],
         };
 
         fs.writeFileSync(configPath, JSON.stringify(configData, null, 2));
@@ -229,9 +232,9 @@ app.whenReady().then(() => {
         const configFilePath = path.join(projectPath, "config.json");
         // 写入紧凑格式的JSON文件（没有空格和换行）
         fs.writeFileSync(configFilePath, JSON.stringify(configData));
-        return { 
+        return {
           success: true,
-          filePath: configFilePath
+          filePath: configFilePath,
         };
       } catch (err) {
         return {
@@ -250,9 +253,9 @@ app.whenReady().then(() => {
         const taskFilePath = path.join(projectPath, "task.json");
         // 写入格式化的JSON文件（含有缩进和换行，便于阅读）
         fs.writeFileSync(taskFilePath, JSON.stringify(taskData, null, 2));
-        return { 
+        return {
           success: true,
-          filePath: taskFilePath
+          filePath: taskFilePath,
         };
       } catch (err) {
         return {
@@ -287,43 +290,40 @@ app.whenReady().then(() => {
   });
 
   // 写入UI设计文件
-  ipcMain.handle(
-    "write-ui-file",
-    async (event, filePath, designData) => {
-      try {
-        // 确保目录存在
-        const dir = path.dirname(filePath);
-        if (!fs.existsSync(dir)) {
-          fs.mkdirSync(dir, { recursive: true });
-        }
-        
-        fs.writeFileSync(filePath, JSON.stringify(designData, null, 2));
-        return { success: true };
-      } catch (err) {
-        return {
-          success: false,
-          error: `保存UI设计失败: ${err.message}`,
-        };
+  ipcMain.handle("write-ui-file", async (event, filePath, designData) => {
+    try {
+      // 确保目录存在
+      const dir = path.dirname(filePath);
+      if (!fs.existsSync(dir)) {
+        fs.mkdirSync(dir, { recursive: true });
       }
+
+      fs.writeFileSync(filePath, JSON.stringify(designData, null, 2));
+      return { success: true };
+    } catch (err) {
+      return {
+        success: false,
+        error: `保存UI设计失败: ${err.message}`,
+      };
     }
-  );
+  });
 
   // 选择图片文件
   ipcMain.handle("select-image-file", async () => {
     const { canceled, filePaths } = await dialog.showOpenDialog(win, {
       properties: ["openFile"],
       filters: [
-        { name: "图片文件", extensions: ["jpg", "jpeg", "png", "gif", "bmp", "svg"] }
-      ]
+        { name: "图片文件", extensions: ["jpg", "jpeg", "png", "gif", "bmp", "svg"] },
+      ],
     });
-    
+
     if (canceled) return { success: false };
-    
+
     try {
       const filePath = filePaths[0];
       return {
         success: true,
-        filePath: filePath
+        filePath: filePath,
       };
     } catch (err) {
       return {
@@ -338,41 +338,41 @@ app.whenReady().then(() => {
     try {
       // 获取所有窗口和屏幕源
       const sources = await desktopCapturer.getSources({
-        types: ['window', 'screen'],
+        types: ["window", "screen"],
         thumbnailSize: { width: 300, height: 200 },
-        fetchWindowIcons: true
+        fetchWindowIcons: true,
       });
-      
+
       // 更新缓存
       windowSourcesCache = {};
-      sources.forEach(source => {
+      sources.forEach((source) => {
         windowSourcesCache[source.id] = {
           id: source.id,
           name: source.name,
           thumbnail: source.thumbnail.toDataURL(),
           appIcon: source.appIcon?.toDataURL(),
           display_id: source.display_id,
-          timestamp: Date.now()
+          timestamp: Date.now(),
         };
       });
       lastSourcesUpdateTime = Date.now();
-      
+
       // 返回简化后的窗口信息
       return {
         success: true,
-        sources: sources.map(source => ({
+        sources: sources.map((source) => ({
           id: source.id,
           name: source.name,
           thumbnail: source.thumbnail.toDataURL(),
           appIcon: source.appIcon?.toDataURL(),
-          display_id: source.display_id
-        }))
+          display_id: source.display_id,
+        })),
       };
     } catch (error) {
-      console.error('获取窗口源失败:', error);
+      console.error("获取窗口源失败:", error);
       return {
         success: false,
-        error: `获取窗口源失败: ${error.message}`
+        error: `获取窗口源失败: ${error.message}`,
       };
     }
   });
@@ -383,39 +383,39 @@ app.whenReady().then(() => {
       // 如果缓存有效，直接从缓存中检查
       const now = Date.now();
       if (now - lastSourcesUpdateTime < SOURCES_CACHE_TTL) {
-        return { 
+        return {
           success: true,
-          exists: !!windowSourcesCache[sourceId]
+          exists: !!windowSourcesCache[sourceId],
         };
       }
-      
+
       // 缓存过期，重新获取窗口列表
       const sources = await desktopCapturer.getSources({
-        types: ['window', 'screen'],
-        thumbnailSize: { width: 150, height: 150 }
+        types: ["window", "screen"],
+        thumbnailSize: { width: 150, height: 150 },
       });
-      
+
       // 更新缓存
       windowSourcesCache = {};
-      sources.forEach(source => {
+      sources.forEach((source) => {
         windowSourcesCache[source.id] = {
           id: source.id,
           name: source.name,
-          timestamp: Date.now()
+          timestamp: Date.now(),
         };
       });
       lastSourcesUpdateTime = now;
-      
+
       // 检查指定的窗口是否存在
       return {
         success: true,
-        exists: sources.some(source => source.id === sourceId)
+        exists: sources.some((source) => source.id === sourceId),
       };
     } catch (error) {
-      console.error('检查窗口状态失败:', error);
+      console.error("检查窗口状态失败:", error);
       return {
         success: false,
-        error: `检查窗口状态失败: ${error.message}`
+        error: `检查窗口状态失败: ${error.message}`,
       };
     }
   });
@@ -425,32 +425,32 @@ app.whenReady().then(() => {
     try {
       // 获取指定窗口的最新信息
       const sources = await desktopCapturer.getSources({
-        types: ['window', 'screen'],
-        thumbnailSize: { width: 300, height: 200 }
+        types: ["window", "screen"],
+        thumbnailSize: { width: 300, height: 200 },
       });
-      
-      const source = sources.find(s => s.id === sourceId);
+
+      const source = sources.find((s) => s.id === sourceId);
       if (!source) {
         return {
           success: false,
-          error: "未找到指定的窗口"
+          error: "未找到指定的窗口",
         };
       }
-      
+
       // 返回窗口信息，供渲染进程进行捕获
       return {
         success: true,
         source: {
           id: source.id,
           name: source.name,
-          thumbnail: source.thumbnail.toDataURL()
-        }
+          thumbnail: source.thumbnail.toDataURL(),
+        },
       };
     } catch (error) {
-      console.error('启动窗口捕获失败:', error);
+      console.error("启动窗口捕获失败:", error);
       return {
         success: false,
-        error: `启动窗口捕获失败: ${error.message}`
+        error: `启动窗口捕获失败: ${error.message}`,
       };
     }
   });
@@ -466,15 +466,15 @@ app.whenReady().then(() => {
           {
             id: "default_camera",
             name: "默认摄像头",
-            deviceId: "default"
-          }
-        ]
+            deviceId: "default",
+          },
+        ],
       };
     } catch (error) {
-      console.error('获取摄像头列表失败:', error);
+      console.error("获取摄像头列表失败:", error);
       return {
         success: false,
-        error: `获取摄像头列表失败: ${error.message}`
+        error: `获取摄像头列表失败: ${error.message}`,
       };
     }
   });
@@ -488,14 +488,14 @@ app.whenReady().then(() => {
         success: true,
         source: {
           id: deviceId || "default",
-          name: deviceId ? `摄像头 (${deviceId})` : "默认摄像头"
-        }
+          name: deviceId ? `摄像头 (${deviceId})` : "默认摄像头",
+        },
       };
     } catch (error) {
-      console.error('启动摄像头捕获失败:', error);
+      console.error("启动摄像头捕获失败:", error);
       return {
         success: false,
-        error: `启动摄像头捕获失败: ${error.message}`
+        error: `启动摄像头捕获失败: ${error.message}`,
       };
     }
   });
@@ -504,49 +504,49 @@ app.whenReady().then(() => {
   ipcMain.handle("run-external-program", async (event, options) => {
     try {
       const { program, args, workingDir } = options;
-      
+
       // 验证参数
       if (!program) {
         return { success: false, error: "程序路径不能为空" };
       }
-      
+
       // 检查程序文件是否存在
       if (!fs.existsSync(program)) {
         return { success: false, error: `程序文件不存在: ${program}` };
       }
-      
+
       // 准备工作目录
       const cwd = workingDir || path.dirname(program);
-      
+
       // 使用spawn启动子进程
       const childProcess = spawn(program, args || [], { cwd });
-      
-      let outputData = '';
-      let errorData = '';
-      
-      childProcess.stdout.on('data', (data) => {
+
+      let outputData = "";
+      let errorData = "";
+
+      childProcess.stdout.on("data", (data) => {
         outputData += data.toString();
       });
-      
-      childProcess.stderr.on('data', (data) => {
+
+      childProcess.stderr.on("data", (data) => {
         errorData += data.toString();
       });
-      
+
       // 返回一个Promise，在进程退出时resolve
       return new Promise((resolve) => {
-        childProcess.on('close', (code) => {
+        childProcess.on("close", (code) => {
           resolve({
             success: code === 0,
             exitCode: code,
             stdout: outputData,
-            stderr: errorData
+            stderr: errorData,
           });
         });
-        
-        childProcess.on('error', (err) => {
+
+        childProcess.on("error", (err) => {
           resolve({
             success: false,
-            error: `启动程序失败: ${err.message}`
+            error: `启动程序失败: ${err.message}`,
           });
         });
       });
@@ -557,106 +557,126 @@ app.whenReady().then(() => {
       };
     }
   });
-  
+
   // 运行机器人平台程序
-  ipcMain.handle("run-robot-platform", async (event, { projectPath, taskJsonPath, port }) => {
-    try {
-      if (!projectPath) {
-        return { success: false, error: "项目路径不能为空" };
+  ipcMain.handle(
+    "run-robot-platform",
+    async (event, { projectPath, taskJsonPath, port }) => {
+      try {
+        if (!projectPath) {
+          return { success: false, error: "项目路径不能为空" };
+        }
+
+        // 构建路径
+        const robotPlatformPath = path.join(
+          app.getAppPath(),
+          "bin",
+          "robot_platform.exe"
+        );
+        const configJsonPath = path.join(projectPath, "config.json");
+
+        // 确定任务文件路径
+        // 如果用户指定了路径则使用，否则使用项目目录下的默认文件
+        const finalTaskJsonPath =
+          taskJsonPath || path.join(projectPath, "task.json");
+
+        // 检查程序文件是否存在
+        if (!fs.existsSync(robotPlatformPath)) {
+          return {
+            success: false,
+            error: `机器人平台程序不存在: ${robotPlatformPath}`,
+          };
+        }
+
+        // 检查配置文件是否存在
+        if (!fs.existsSync(configJsonPath)) {
+          return {
+            success: false,
+            error: `配置文件不存在: ${configJsonPath}`,
+          };
+        }
+
+        // 检查任务文件是否存在
+        if (!fs.existsSync(finalTaskJsonPath)) {
+          return {
+            success: false,
+            error: `任务文件不存在: ${finalTaskJsonPath}`,
+          };
+        }
+
+        // 准备命令行参数
+        const args = ["-c", configJsonPath, "-t", finalTaskJsonPath];
+
+        // 如果指定了端口，添加端口参数
+        if (port) {
+          args.push("-p", port.toString());
+        }
+
+        // 使用spawn启动子进程
+        const cwd = path.dirname(robotPlatformPath);
+        const childProcess = spawn(robotPlatformPath, args, {
+          cwd,
+          detached: true,
+        });
+
+        // 生成唯一的进程ID
+        const processId = uuidv4();
+
+        // 存储进程引用，用于后续停止进程
+        runningProcesses[processId] = {
+          process: childProcess,
+          startTime: Date.now(),
+        };
+
+        let outputData = "";
+        let errorData = "";
+
+        childProcess.stdout.on("data", (data) => {
+          outputData += data.toString();
+        });
+
+        childProcess.stderr.on("data", (data) => {
+          errorData += data.toString();
+        });
+
+        // 当进程结束时，从运行列表中删除
+        childProcess.on("close", (code) => {
+          delete runningProcesses[processId];
+        });
+
+        childProcess.on("error", (err) => {
+          delete runningProcesses[processId];
+        });
+
+        // 这里我们立即返回进程ID，不等待进程结束
+        return {
+          success: true,
+          processId: processId,
+          message: "机器人平台程序已启动",
+        };
+      } catch (err) {
+        return {
+          success: false,
+          error: `运行机器人平台失败: ${err.message}`,
+        };
       }
-      
-      // 构建路径
-      const robotPlatformPath = path.join(app.getAppPath(), "bin", "robot_platform.exe");
-      const configJsonPath = path.join(projectPath, "config.json");
-      
-      // 确定任务文件路径
-      // 如果用户指定了路径则使用，否则使用项目目录下的默认文件
-      const finalTaskJsonPath = taskJsonPath || path.join(projectPath, "task.json");
-      
-      // 检查程序文件是否存在
-      if (!fs.existsSync(robotPlatformPath)) {
-        return { success: false, error: `机器人平台程序不存在: ${robotPlatformPath}` };
-      }
-      
-      // 检查配置文件是否存在
-      if (!fs.existsSync(configJsonPath)) {
-        return { success: false, error: `配置文件不存在: ${configJsonPath}` };
-      }
-      
-      // 检查任务文件是否存在
-      if (!fs.existsSync(finalTaskJsonPath)) {
-        return { success: false, error: `任务文件不存在: ${finalTaskJsonPath}` };
-      }
-      
-      // 准备命令行参数
-      const args = ["-c", configJsonPath, "-t", finalTaskJsonPath];
-      
-      // 如果指定了端口，添加端口参数
-      if (port) {
-        args.push("-p", port.toString());
-      }
-      
-      // 使用spawn启动子进程
-      const cwd = path.dirname(robotPlatformPath);
-      const childProcess = spawn(robotPlatformPath, args, { cwd, detached: true });
-      
-      // 生成唯一的进程ID
-      const processId = uuidv4();
-      
-      // 存储进程引用，用于后续停止进程
-      runningProcesses[processId] = {
-        process: childProcess,
-        startTime: Date.now()
-      };
-      
-      let outputData = '';
-      let errorData = '';
-      
-      childProcess.stdout.on('data', (data) => {
-        outputData += data.toString();
-      });
-      
-      childProcess.stderr.on('data', (data) => {
-        errorData += data.toString();
-      });
-      
-      // 当进程结束时，从运行列表中删除
-      childProcess.on('close', (code) => {
-        delete runningProcesses[processId];
-      });
-      
-      childProcess.on('error', (err) => {
-        delete runningProcesses[processId];
-      });
-      
-      // 这里我们立即返回进程ID，不等待进程结束
-      return {
-        success: true,
-        processId: processId,
-        message: "机器人平台程序已启动"
-      };
-    } catch (err) {
-      return {
-        success: false,
-        error: `运行机器人平台失败: ${err.message}`,
-      };
     }
-  });
-  
+  );
+
   // 停止运行中的机器人平台进程
   ipcMain.handle("stop-robot-platform", async (event, processId) => {
     try {
       if (!processId || !runningProcesses[processId]) {
-        return { 
-          success: false, 
-          error: "找不到指定的进程" 
+        return {
+          success: false,
+          error: "找不到指定的进程",
         };
       }
-      
+
       const processInfo = runningProcesses[processId];
-      
+
       // 在 Windows 平台上使用 taskkill 确保子进程被终止
-      if (process.platform === 'win32') {
+      if (process.platform === "win32") {
         try {
           // 终止进程及其子进程
           processInfo.process.kill();
@@ -672,41 +692,213 @@ app.whenReady().then(() => {
           processInfo.process.kill();
         }
       }
-      
+
       // 从运行中进程列表移除
       delete runningProcesses[processId];
-      
-      return { 
+
+      return {
         success: true,
-        message: "进程已终止" 
+        message: "进程已终止",
       };
     } catch (err) {
       return {
         success: false,
-        error: `停止进程失败: ${err.message}`
+        error: `停止进程失败: ${err.message}`,
       };
     }
   });
-  
+
   // 选择任务JSON文件
   ipcMain.handle("select-task-json-file", async () => {
     const { canceled, filePaths } = await dialog.showOpenDialog(win, {
       properties: ["openFile"],
       filters: [{ name: "任务JSON文件", extensions: ["json"] }],
     });
-    
+
     if (canceled) return { success: false };
-    
+
     try {
       const filePath = filePaths[0];
       return {
         success: true,
-        filePath: filePath
+        filePath: filePath,
       };
     } catch (err) {
       return {
         success: false,
         error: `选择任务JSON文件失败: ${err.message}`,
+      };
+    }
+  });
+
+  // 新增：开启TCP监听服务
+  ipcMain.handle("start-tcp-monitor", async (event, { port }) => {
+    try {
+      // 验证端口
+      if (!port || isNaN(port) || port < 1024 || port > 65535) {
+        return {
+          success: false,
+          error: `无效的端口号: ${port}`,
+        };
+      }
+
+      // 检查是否已经有该端口的服务器在运行
+      if (tcpServers[port]) {
+        return {
+          success: true,
+          serverId: port.toString(),
+          message: "TCP监控服务已在运行",
+        };
+      }
+
+      // 创建TCP服务器
+      const server = net.createServer();
+      const connections = new Map(); // 存储连接
+      let buffer = ""; // 存储接收到的不完整数据
+
+      // 生成服务器ID (使用端口作为ID)
+      const serverId = port.toString();
+
+      // 监听连接事件
+      server.on("connection", (socket) => {
+        const connId = `${socket.remoteAddress}:${socket.remotePort}`;
+        connections.set(connId, socket);
+        console.log(`新的TCP连接: ${connId}`);
+
+        socket.on("data", (data) => {
+          const strData = data.toString("utf-8");
+          buffer += strData;
+
+          // 处理接收到的数据，可能包含多个或不完整的JSON
+          try {
+            // 尝试提取所有完整的JSON对象
+            let jsonObjects = [];
+            let startIndex = 0;
+
+            while (startIndex < buffer.length) {
+              // 尝试找到一个完整的JSON对象
+              let foundValidJson = false;
+
+              for (let i = startIndex; i < buffer.length; i++) {
+                try {
+                  // 尝试解析从startIndex到i的子字符串
+                  const potentialJson = buffer.substring(startIndex, i + 1);
+                  const parsedData = JSON.parse(potentialJson);
+
+                  // 如果成功解析，添加到结果列表
+                  jsonObjects.push(parsedData);
+                  startIndex = i + 1; // 移动到下一个位置
+                  foundValidJson = true;
+                  break;
+                } catch (e) {
+                  // 解析失败，继续尝试
+                  continue;
+                }
+              }
+
+              // 如果没有找到有效的JSON，则退出循环
+              if (!foundValidJson) {
+                break;
+              }
+            }
+
+            // 保留未解析的部分
+            buffer = buffer.substring(startIndex);
+
+            // 将数据发送到渲染进程
+            if (jsonObjects.length > 0) {
+              win.webContents.send("tcp-data", { serverId, data: jsonObjects });
+            }
+          } catch (err) {
+            console.error("解析TCP数据失败:", err);
+          }
+        });
+
+        socket.on("close", () => {
+          console.log(`TCP连接关闭: ${connId}`);
+          connections.delete(connId);
+        });
+
+        socket.on("error", (err) => {
+          console.error(`TCP连接错误: ${connId}`, err);
+          connections.delete(connId);
+        });
+      });
+
+      // 启动TCP服务器
+      server.listen(port, "0.0.0.0", () => {
+        console.log(`TCP监控服务器已启动，端口: ${port}`);
+      });
+
+      // 监听服务器错误
+      server.on("error", (err) => {
+        console.error(`TCP服务器错误:`, err);
+        if (tcpServers[serverId]) {
+          delete tcpServers[serverId];
+        }
+      });
+
+      // 存储服务器实例
+      tcpServers[serverId] = {
+        server,
+        connections,
+        buffer,
+      };
+
+      return {
+        success: true,
+        serverId,
+        message: `TCP监控服务已在端口 ${port} 启动`,
+      };
+    } catch (err) {
+      return {
+        success: false,
+        error: `启动TCP监控服务失败: ${err.message}`,
+      };
+    }
+  });
+
+  // 停止TCP监听服务
+  ipcMain.handle("stop-tcp-monitor", async (event, { serverId }) => {
+    try {
+      if (!serverId || !tcpServers[serverId]) {
+        return {
+          success: false,
+          error: "找不到指定的TCP监控服务",
+        };
+      }
+
+      const { server, connections } = tcpServers[serverId];
+
+      // 关闭所有连接
+      connections.forEach((socket, connId) => {
+        try {
+          socket.destroy();
+          console.log(`已关闭TCP连接: ${connId}`);
+        } catch (err) {
+          console.error(`关闭TCP连接失败: ${connId}`, err);
+        }
+      });
+
+      // 关闭服务器
+      try {
+        server.close();
+        console.log(`已关闭TCP监控服务器: ${serverId}`);
+      } catch (err) {
+        console.error(`关闭TCP服务器失败: ${serverId}`, err);
+      }
+
+      // 从列表中移除
+      delete tcpServers[serverId];
+
+      return {
+        success: true,
+        message: "TCP监控服务已停止",
+      };
+    } catch (err) {
+      return {
+        success: false,
+        error: `停止TCP监控服务失败: ${err.message}`,
       };
     }
   });

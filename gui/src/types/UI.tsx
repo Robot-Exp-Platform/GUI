@@ -1,7 +1,7 @@
 // UI 组件基础类型
 export interface UIBaseItem {
   id: string;
-  type: "text" | "image" | "rectangle" | "circle" | "triangle" | "capture" | "camera" | "button";
+  type: "text" | "image" | "rectangle" | "circle" | "triangle" | "capture" | "camera" | "button" | "monitor";
   x: number;
   y: number;
   width: number;
@@ -68,6 +68,19 @@ export interface UICameraItem extends UIBaseItem {
   frames: number; // 每秒渲染的帧数，默认为1
 }
 
+// 监视器组件
+export interface UIMonitorItem extends UIBaseItem {
+  type: "monitor";
+  port: number;     // TCP监听端口，默认为6651
+  filterTag: string; // 要筛选的标签
+  drawField: string; // 要绘制的字段
+  duration: number;  // 展示最近多少秒的数据，默认为5
+  minValue: number;  // Y轴最小值，默认为0
+  maxValue: number;  // Y轴最大值，默认为3
+  serverId?: string; // 服务器ID，运行时使用
+  isRunning?: boolean; // 表示监视器当前是否在运行
+}
+
 // UI组件联合类型
 export type UIItem =
   | UITextItem
@@ -77,7 +90,8 @@ export type UIItem =
   | UITriangleItem
   | UIButtonItem
   | UICaptureItem
-  | UICameraItem;
+  | UICameraItem
+  | UIMonitorItem;
 
 // UI设计文件
 export interface UIDesign {

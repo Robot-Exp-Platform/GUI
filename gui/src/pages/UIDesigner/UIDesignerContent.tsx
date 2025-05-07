@@ -26,6 +26,7 @@ import {
   CaptureUIItem,
   CameraUIItem,
   ButtonUIItem,
+  MonitorUIItem,
 } from "~/components/UIItem";
 import {
   TextUIItemEditor,
@@ -34,6 +35,7 @@ import {
   CaptureUIItemEditor,
   CameraUIItemEditor,
   ButtonUIItemEditor,
+  MonitorUIItemEditor,
 } from "~/components/UIItemEditor";
 import { UISidebar } from "./UISidebar";
 
@@ -281,6 +283,25 @@ export const UIDesignerContent: FC<UIDesignerContentProps> = ({
     });
   };
 
+  const handleAddMonitor = () => {
+    addItem({
+      type: "monitor",
+      x: 50,
+      y: 50,
+      width: 400,
+      height: 300,
+      rotation: 0,
+      fill: "#f0f8ff",
+      port: 6651,       // 默认端口
+      filterTag: "",    // 默认为空，用户需要设置
+      drawField: "",    // 默认为空，用户需要设置
+      duration: 5,      // 默认显示5秒数据
+      minValue: 0,      // Y轴最小值默认为0
+      maxValue: 3,      // Y轴最大值默认为3
+      isRunning: false, // 默认状态为非运行中
+    });
+  };
+
   const handleSaveUI = async () => {
     try {
       const success = await saveUIDesign();
@@ -311,6 +332,8 @@ export const UIDesignerContent: FC<UIDesignerContentProps> = ({
         return <CameraUIItemEditor item={selectedItem} />;
       case "button":
         return <ButtonUIItemEditor item={selectedItem} />;
+      case "monitor":
+        return <MonitorUIItemEditor item={selectedItem} />;
       default:
         return null;
     }
@@ -354,6 +377,10 @@ export const UIDesignerContent: FC<UIDesignerContentProps> = ({
         case "button":
           return (
             <ButtonUIItem key={item.id} item={item} isRunMode={isRunMode} />
+          );
+        case "monitor":
+          return (
+            <MonitorUIItem key={item.id} item={item} isRunMode={isRunMode} />
           );
         default:
           return null;
@@ -427,6 +454,7 @@ export const UIDesignerContent: FC<UIDesignerContentProps> = ({
           onAddCapture={handleAddCapture}
           onAddCamera={handleAddCamera}
           onAddButton={handleAddButton}
+          onAddMonitor={handleAddMonitor}
           onSaveUI={handleSaveUI}
           onToggleRunMode={handleToggleRunMode}
         />
@@ -474,6 +502,8 @@ export const UIDesignerContent: FC<UIDesignerContentProps> = ({
                   ? "摄像头"
                   : selectedItem.type === "button"
                   ? "按钮"
+                  : selectedItem.type === "monitor"
+                  ? "监视器"
                   : "组件"}
               </Header>
               {renderEditor()}

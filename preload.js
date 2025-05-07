@@ -74,4 +74,17 @@ contextBridge.exposeInMainWorld("electronAPI", {
   
   // 停止运行中的机器人平台进程
   stopRobotPlatform: (processId) => ipcRenderer.invoke("stop-robot-platform", processId),
+  
+  // 新增: TCP监控相关API
+  // 开始TCP监控
+  startTcpMonitor: (options) => ipcRenderer.invoke("start-tcp-monitor", options),
+  
+  // 停止TCP监控
+  stopTcpMonitor: (options) => ipcRenderer.invoke("stop-tcp-monitor", options),
+  
+  // 监听TCP数据
+  onTcpData: (callback) => ipcRenderer.on("tcp-data", callback),
+  
+  // 移除TCP数据监听
+  offTcpData: (callback) => ipcRenderer.removeListener("tcp-data", callback),
 });

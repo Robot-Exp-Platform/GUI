@@ -181,6 +181,41 @@ interface ElectronAPI {
     message?: string;
     error?: string;
   }>;
+  
+  // 新增：开始TCP监控
+  startTcpMonitor: (options: {
+    port: number;
+  }) => Promise<{
+    success: boolean;
+    serverId?: string;
+    message?: string;
+    error?: string;
+  }>;
+  
+  // 新增：停止TCP监控
+  stopTcpMonitor: (options: {
+    serverId: string;
+  }) => Promise<{
+    success: boolean;
+    message?: string;
+    error?: string;
+  }>;
+  
+  // 新增：监听TCP数据
+  onTcpData: (
+    callback: (event: any, data: { 
+      serverId: string; 
+      data: Array<any>;
+    }) => void
+  ) => void;
+  
+  // 新增：移除TCP数据监听
+  offTcpData: (
+    callback: (event: any, data: { 
+      serverId: string; 
+      data: Array<any>;
+    }) => void
+  ) => void;
 }
 
 interface Window {

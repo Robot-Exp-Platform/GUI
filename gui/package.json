@@ -5,8 +5,10 @@
   "homepage": ".",
   "dependencies": {
     "@vitejs/plugin-react": "^4.4.1",
+    "chart.js": "^4.4.9",
     "konva": "^9.3.20",
     "react": "^18.2.0",
+    "react-chartjs-2": "^5.3.0",
     "react-color": "^2.19.3",
     "react-contexify": "^6.0.0",
     "react-dnd": "^16.0.1",
